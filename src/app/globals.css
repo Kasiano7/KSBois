@@ -1,0 +1,274 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ==========================================================================
+   DESIGN TOKENS — docs/03-DESIGN-SYSTEM.md
+
+   Une seule source de vérité : la palette « bois » ci-dessous. Les variables
+   sémantiques de shadcn/ui n'ont AUCUNE valeur propre, elles pointent vers
+   cette palette (§ shadcn plus bas). Conséquence : chaque composant shadcn
+   ajouté au projet est automatiquement à la charte, et le thème white-label
+   (company_themes.tokens) le repeint sans le toucher.
+
+   En multi-tenant, ces valeurs sont surchargées par un <style> injecté dans le
+   layout racine (docs/03 §2.3).
+   ========================================================================== */
+
+:root {
+  /* Sombre — registre récit */
+  --ecorce: #171310;
+  --ecorce-eleve: #241d18;
+  --ecorce-bord: #352c24;
+
+  /* Clair — registre transactionnel */
+  --aubier: #f4f2ec;
+  --aubier-pur: #ffffff;
+  --aubier-bord: #dfd9cd;
+
+  /* Marque */
+  --sapin: #22392c;
+  --sapin-clair: #2e4c3a;
+  --braise: #c4501b;
+  --braise-texte: #a83f12;
+  --seve: #d9a441;
+
+  /* Neutres */
+  --cendre: #6e6459;
+  --cendre-clair: #a79c8e;
+  --encre: #14100d;
+
+  /* Sémantique métier */
+  --succes: #2f6b45;
+  --alerte: #b45309;
+  --erreur: #a32020;
+  --info: #2c4e63;
+
+  /* ---- Variables shadcn/ui : mappées sur la palette, jamais autonomes ---- */
+  --background: var(--aubier);
+  --foreground: var(--encre);
+  --card: var(--aubier-pur);
+  --card-foreground: var(--encre);
+  --popover: var(--aubier-pur);
+  --popover-foreground: var(--encre);
+  /* Action principale = sapin. La braise reste réservée à la conversion. */
+  --primary: var(--sapin);
+  --primary-foreground: #ffffff;
+  --secondary: var(--aubier);
+  --secondary-foreground: var(--encre);
+  --muted: var(--aubier);
+  --muted-foreground: var(--cendre);
+  --accent: var(--braise);
+  --accent-foreground: #ffffff;
+  --destructive: var(--erreur);
+  --destructive-foreground: #ffffff;
+  --border: var(--aubier-bord);
+  --input: var(--aubier-bord);
+  --ring: var(--braise);
+  /* Palette de graphiques admin — jamais la couleur seule (docs/03 §9) */
+  --chart-1: var(--sapin);
+  --chart-2: var(--braise);
+  --chart-3: var(--seve);
+  --chart-4: var(--info);
+  --chart-5: var(--cendre);
+  /* 0.5rem = 8px, soit le rayon « carte » du design system */
+  --radius: 0.5rem;
+  --sidebar: var(--ecorce);
+  --sidebar-foreground: var(--aubier);
+  --sidebar-primary: var(--braise);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--ecorce-eleve);
+  --sidebar-accent-foreground: var(--aubier);
+  --sidebar-border: var(--ecorce-bord);
+  --sidebar-ring: var(--braise);
+}
+
+/*
+ * Registre sombre — utilisé par l'administration et les sections récit.
+ * Ce n'est PAS un mode sombre commutable par préférence système : le registre
+ * est décidé par la page (docs/03 §1 et §10).
+ */
+.dark {
+  --background: var(--ecorce);
+  --foreground: var(--aubier);
+  --card: var(--ecorce-eleve);
+  --card-foreground: var(--aubier);
+  --popover: var(--ecorce-eleve);
+  --popover-foreground: var(--aubier);
+  --primary: var(--sapin-clair);
+  --primary-foreground: #ffffff;
+  --secondary: var(--ecorce-eleve);
+  --secondary-foreground: var(--aubier);
+  --muted: var(--ecorce-eleve);
+  --muted-foreground: var(--cendre-clair);
+  --accent: var(--braise);
+  --accent-foreground: #ffffff;
+  --destructive: #d24d4d;
+  --destructive-foreground: #ffffff;
+  --border: var(--ecorce-bord);
+  --input: var(--ecorce-bord);
+  --ring: var(--braise);
+}
+
+@theme inline {
+  /* Palette métier, utilisable en `bg-sapin`, `text-braise-texte`, etc. */
+  --color-ecorce: var(--ecorce);
+  --color-ecorce-eleve: var(--ecorce-eleve);
+  --color-ecorce-bord: var(--ecorce-bord);
+  --color-aubier: var(--aubier);
+  --color-aubier-pur: var(--aubier-pur);
+  --color-aubier-bord: var(--aubier-bord);
+  --color-sapin: var(--sapin);
+  --color-sapin-clair: var(--sapin-clair);
+  --color-braise: var(--braise);
+  --color-braise-texte: var(--braise-texte);
+  --color-seve: var(--seve);
+  --color-cendre: var(--cendre);
+  --color-cendre-clair: var(--cendre-clair);
+  --color-encre: var(--encre);
+  --color-succes: var(--succes);
+  --color-alerte: var(--alerte);
+  --color-erreur: var(--erreur);
+  --color-info: var(--info);
+
+  /* Typographie — docs/03 §3. Archivo est la police d'interface, PAS Geist. */
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-heading: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-archivo), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), monospace;
+
+  /* Échelle d'espacement — densité 4/10 (docs/03 §5) */
+  --spacing-section: 4rem;
+  --spacing-section-lg: 6rem;
+
+  /* Rayons du design system */
+  --radius-champ: 4px;
+  --radius-carte: 8px;
+
+  /* Ponts shadcn/ui */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.5);
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  /* Tout élément cliquable porte le curseur main (docs/03 §9) */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+html {
+  /* Le corps de texte est à 17px, choix assumé pour l'audience (docs/03 §3.1) */
+  font-size: 106.25%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  line-height: 1.65;
+  text-rendering: optimizeLegibility;
+}
+
+/* Focus visible partout — jamais d'outline:none sans remplacement */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--braise);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Registre sombre : appliqué par section ou par layout, pas par préférence */
+.registre-sombre {
+  background: var(--ecorce);
+  color: var(--aubier);
+}
+
+.registre-sombre :where(h1, h2, h3) {
+  color: var(--aubier);
+}
+
+/* Chiffres tabulaires pour tous les montants et volumes */
+.tabulaire {
+  font-variant-numeric: tabular-nums;
+}
+
+:where(h1, h2) {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+:where(h3, h4) {
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+/* Micro-label — eyebrows et labels de données */
+.micro-label {
+  font-size: 0.706rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Longueur de ligne confortable pour le texte courant */
+.prose-bois {
+  max-width: 68ch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
