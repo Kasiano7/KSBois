@@ -291,6 +291,17 @@ Les chiffres sont agrégés côté serveur à partir des tables métier indexée
 
 L'onglet **Fonctionnalités** est le levier du modèle white-label : c'est là qu'on active la page granulés pour une entreprise et qu'on la masque pour une autre, sans toucher au code.
 
+**Implémenté le 9 août 2026.** L'écran unique, réservé au gérant, regroupe six rubriques à ancres :
+entreprise, nom/logo/couleurs, commandes et rangement, paiement/facturation,
+notifications/textes légaux et fonctionnalités. Chaque action revérifie le rôle `owner`, valide la
+saisie, journalise la modification dans `audit_log` puis rafraîchit immédiatement le site. Le
+rangement est activable et tarifé par défaut à **20 € TTC / m³ apparent** ; le client voit cette
+ligne au récapitulatif, et l'admin la retrouve sur la fiche commande.
+
+L'upload ImageKit, les clés Stripe/RIB, l'éditeur riche des textes légaux et la gestion des
+utilisateurs restent des enrichissements dédiés : l'écran actuel couvre les réglages effectivement
+consommés par l'application sans exposer de secret au navigateur.
+
 ---
 
 ## 10. Notifications internes

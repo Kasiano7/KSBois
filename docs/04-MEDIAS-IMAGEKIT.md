@@ -6,6 +6,11 @@
 
 ## 1. Mise au point préalable
 
+> État transitoire : tant que le compte ImageKit et l'écran Médias ne sont pas branchés, le logo
+> de marque peut être saisi dans `/admin/reglages` sous forme d'adresse HTTPS ou de chemin public.
+> `company_themes.logo_media_id` reste la cible canonique du futur sélecteur de médias ; cette
+> saisie évite de bloquer aujourd'hui le changement de société et de logo.
+
 ImageKit est un **DAM + CDN de transformation**. Il stocke, optimise, redimensionne et distribue des médias qu'on lui fournit. **Il ne fournit aucun contenu** : il n'ira pas chercher des photos de bûcheronnage. La stratégie d'acquisition des visuels est traitée en §8 — c'est un chantier à part entière, et c'est le facteur de confiance n°1 du site.
 
 Contrainte technique à connaître : **l'upload via l'API ImageKit accepte une URL, pas un chemin local.** Pour l'admin, on contourne cela avec l'upload direct navigateur → ImageKit (§4), qui est de toute façon la bonne architecture (le fichier ne transite pas par le serveur Next.js).

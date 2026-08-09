@@ -76,11 +76,21 @@ export interface AppliedDiscount {
 
 export interface OrderTotalsInput {
   lines: OrderLine[];
+  /** Options payantes déjà calculées en centimes TTC, avec leur propre taux de TVA. */
+  options?: PricedOption[];
+  /** Compatibilité avec les anciens appels sans détail de TVA. Préférer `options`. */
   optionsCents?: Cents;
   discount?: AppliedDiscount | null;
   deliveryCents?: Cents;
   /** En franchise en base de TVA, aucune ventilation n'est produite. */
   vatMode?: "assujetti" | "franchise_en_base";
+}
+
+export interface PricedOption {
+  code: string;
+  name: string;
+  totalCents: Cents;
+  vatRate: number;
 }
 
 export interface VatBucket {
@@ -114,7 +124,11 @@ export interface OrderTotals {
  * que le montant offert reste traçable.
  */
 export function computeOrderTotals(input: OrderTotalsInput): OrderTotals {
-  const { lines, optionsCents = 0, discount = null, deliveryCents = 0 } = input;
+  const { lines, options = [], discount = null, deliveryCents = 0 } = input;
+  const optionsCents =
+    options.length > 0
+      ? options.reduce((somme, option) => somme + option.totalCents, 0)
+      : (input.optionsCents ?? 0);
   const vatMode = input.vatMode ?? "assujetti";
 
   const subtotalCents = lines.reduce((sum, line) => sum + line.lineTotalCents, 0);
@@ -150,7 +164,7 @@ export function computeOrderTotals(input: OrderTotalsInput): OrderTotals {
     vatBreakdown:
       vatMode === "franchise_en_base"
         ? []
-        : computeVatBreakdown(lines, effectiveDeliveryCents, discountCents),
+        : computeVatBreakdown(lines, effectiveDeliveryCents, discountCents, options),
   };
 }
 
@@ -165,11 +179,15 @@ export function computeVatBreakdown(
   lines: OrderLine[],
   deliveryCents: Cents,
   discountCents: Cents = 0,
+  options: PricedOption[] = [],
 ): VatBucket[] {
   const byRate = new Map<number, Cents>();
 
   for (const line of lines) {
     byRate.set(line.vatRate, (byRate.get(line.vatRate) ?? 0) + line.lineTotalCents);
+  }
+  for (const option of options) {
+    byRate.set(option.vatRate, (byRate.get(option.vatRate) ?? 0) + option.totalCents);
   }
 
   const linesTotal = [...byRate.values()].reduce((a, b) => a + b, 0);

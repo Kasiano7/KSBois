@@ -6,6 +6,14 @@
 
 ## 1. Moteur de prix
 
+### 1.0 Options de service
+
+Le rangement est une option TTC calculée côté serveur : `prix_par_m3_cents × volume_m3_apparent`,
+avec un seul arrondi final. Le prix par défaut est **20 €/m³**, lu dans `product_options` et
+modifiable dans les réglages. L'option porte son propre taux de TVA à **20 %** ; le moteur de
+ventilation inclut donc les options détaillées, et pas seulement un total sans taux. Le navigateur
+n'envoie ni le prix ni le montant calculé, uniquement le choix `unload_type = 'range'`.
+
 ### 1.1 Calcul d'une ligne
 
 ```

@@ -7,6 +7,7 @@ import {
   computeOrderTotals,
   type OrderLine,
   type OrderTotals,
+  type PricedOption,
 } from "@/domain/pricing";
 import {
   checkZoneEligibility,
@@ -17,7 +18,7 @@ import {
   type Vehicle,
   type ZoneEligibility,
 } from "@/domain/delivery";
-import { getDeliveryFeeSettings, getFuelSettings } from "./reglages";
+import { getDeliveryFeeSettings, getFuelSettings, getRangementSettings } from "./reglages";
 import { joursDeLivraison, resolveZone, listVehicles, type ResolutionZone } from "./zones";
 import type { Tenant } from "@/lib/tenant";
 
@@ -76,6 +77,7 @@ export interface PanierResume {
   cartId: string | null;
   lignes: LignePanier[];
   totaux: OrderTotals;
+  options: (PricedOption & { optionId: string | null })[];
   livraison: LivraisonResume;
   divergences: DivergencePanier[];
   codePostal: string | null;
@@ -173,6 +175,7 @@ export async function getPanier(tenant: Tenant): Promise<PanierResume> {
       cartId: null,
       lignes: [],
       totaux: PANIER_VIDE_TOTAUX,
+      options: [],
       livraison: videLivraison(),
       divergences: [],
       codePostal: null,
@@ -184,7 +187,7 @@ export async function getPanier(tenant: Tenant): Promise<PanierResume> {
 
   const { data: panier } = await supabase
     .from("carts")
-    .select("id, postal_code, city")
+    .select("id, postal_code, city, fulfillment_type, unload_type")
     .eq("id", cartId)
     .eq("company_id", tenant.id)
     .maybeSingle();
@@ -194,6 +197,7 @@ export async function getPanier(tenant: Tenant): Promise<PanierResume> {
       cartId: null,
       lignes: [],
       totaux: PANIER_VIDE_TOTAUX,
+      options: [],
       livraison: videLivraison(),
       divergences: [],
       codePostal: null,
@@ -281,9 +285,25 @@ export async function getPanier(tenant: Tenant): Promise<PanierResume> {
   }
 
   const livraison = await calculerLivraison(tenant, orderLines, panier.postal_code, panier.city);
+  const volumeTotal = orderLines.reduce((somme, ligne) => somme + ligne.lineVolumeM3, 0);
+  const options: PanierResume["options"] = [];
+
+  if (panier.fulfillment_type === "delivery" && panier.unload_type === "range") {
+    const rangement = await getRangementSettings(tenant.id);
+    if (rangement.enabled) {
+      options.push({
+        optionId: rangement.id,
+        code: "rangement",
+        name: "Rangement du bois",
+        totalCents: Math.round(rangement.pricePerM3Cents * volumeTotal),
+        vatRate: rangement.vatRate,
+      });
+    }
+  }
 
   const totaux = computeOrderTotals({
     lines: orderLines,
+    options,
     deliveryCents:
       livraison.devis?.status === "ok" ? livraison.devis.totalCents : 0,
     vatMode: tenant.vatMode,
@@ -293,6 +313,7 @@ export async function getPanier(tenant: Tenant): Promise<PanierResume> {
     cartId: panier.id,
     lignes,
     totaux,
+    options,
     livraison,
     divergences,
     codePostal: panier.postal_code,

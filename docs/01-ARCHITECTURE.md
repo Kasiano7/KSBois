@@ -366,6 +366,15 @@ create table product_options (
 );
 ```
 
+Le code `rangement` est créé par la migration `20260809140000_reglages_rangement.sql` à
+**2 000 centimes TTC par m³ apparent** (`price_type = 'per_m3'`, TVA 20 %). La ligne
+`product_options` est la source de vérité administrable ; au passage de commande, son montant
+calculé est figé dans `order_option_items`, comme les lignes de bois.
+
+Les valeurs de marque qui ne justifient pas une colonne dédiée vivent dans `company_settings` :
+`branding.tagline` et `branding.logo_url`. Le nom affiché reste `companies.name`; les six couleurs
+restent dans `company_themes.tokens`.
+
 ### 3.4 Médias
 
 ```sql

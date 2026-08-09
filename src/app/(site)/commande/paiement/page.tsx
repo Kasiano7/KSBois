@@ -41,9 +41,7 @@ export default async function PagePaiement() {
   const reglages = await getPaymentSettings(tenant.id);
 
   const contexte: PaymentAvailabilityInput = {
-    // TODO : lire les modes réellement activés dans les réglages de l'entreprise
-    // (company_settings) quand l'écran d'administration existera.
-    enabledMethods: ["cash", "check", "transfer", "sumup", "card"],
+    enabledMethods: reglages.enabledMethods,
     totalCents: panier.totaux.totalCents,
     volumeM3: panier.totaux.totalVolumeM3,
     distanceKm: panier.livraison.distanceKm ?? 0,
@@ -84,6 +82,12 @@ export default async function PagePaiement() {
         </ul>
 
         <dl className="border-aubier-bord mt-4 space-y-2 border-t pt-4 text-[15px]">
+          {panier.options.map((option) => (
+            <div key={option.code} className="flex justify-between gap-3">
+              <dt className="text-cendre">{option.name}</dt>
+              <dd className="tabulaire">{formatEuros(option.totalCents)}</dd>
+            </div>
+          ))}
           <div className="flex justify-between gap-3">
             <dt className="text-cendre">Livraison à {panier.ville}</dt>
             <dd className="tabulaire">

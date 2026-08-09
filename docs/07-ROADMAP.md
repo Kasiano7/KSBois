@@ -60,7 +60,7 @@ npm run verify
 **✅ Fait**
 
 - Fiche produit : règle de coupe (échelle réelle), jauge d'humidité mesurée, sélecteur de quantité, prix en direct avec paliers dégressifs, encart pédagogique m³ apparent / stère
-- Moteurs métier `src/domain/` : prix, paliers, TVA multi-taux, unités, zones, sélection de véhicule, surcharge carburant plafonnée, minimums de zone — **64 tests unitaires**
+- Moteurs métier `src/domain/` : prix, paliers, TVA multi-taux, unités, zones, sélection de véhicule, surcharge carburant plafonnée, minimums de zone — **207 tests unitaires** sur l'ensemble du domaine et des services purs
 - Panier serveur (cookie httpOnly, tables sans privilège client), revalidation des prix et du stock à chaque lecture, divergences signalées et jamais corrigées en silence
 - Vérification de zone **dès le panier**, levée d'ambiguïté quand un code postal couvre plusieurs communes, jours de livraison par commune
 - Calcul de livraison bout en bout : zone → véhicule → carburant → arrondi, avec les quatre sorties de secours (hors zone, code postal inconnu, volume hors flotte, frais hors norme)
@@ -91,12 +91,14 @@ npm run verify
 - **Espace client et recommande en 2 clics** (`/compte`) : connexion par lien magique sans mot de passe, création de compte en un clic depuis la confirmation de commande et depuis l'email, **rattachement automatique des commandes passées en invité** sur l'email vérifié, dernière commande et bouton « Recommander la même chose » seuls au-dessus de la ligne de flottaison, historique, détail de commande, adresses de livraison. La recommande remplit le panier à l'identique, reprend adresse et contraintes d'accès, et emmène directement au choix du créneau — sauf si un format a été retiré, si un prix a bougé ou si le stock ne suit plus, auquel cas elle dit ce qui a changé et renvoie au panier
   - Correctif de fond au passage : le tunnel n'écrivait **aucune** fiche `customers` et ne renseignait jamais `orders.customer_id`. La policy `orders_customer_read` ne rendait donc aucune ligne — l'espace client aurait été vide pour tout le monde
 
+- **Écran réglages** (`/admin/reglages`) : identité légale et coordonnées, nom/logo/sous-titre et six couleurs, règles de commande, moyens de paiement et acompte, TVA et mentions documentaires, notifications, textes légaux et feature flags. Le rangement est désormais une vraie option serveur à **20 € TTC / m³ apparent** par défaut, modifiable, ventilée à 20 % de TVA et figée sur la commande.
+
 **⏳ Reste à faire sur le lot 1**
 
 - Modèles d'email restants : rappel la veille, livraison effectuée avec facture, récap quotidien
 - **`STRIPE_WEBHOOK_SECRET` à obtenir** : le webhook est écrit, signé et idempotent, mais inactif sans son secret. En local : `stripe listen --forward-to localhost:3000/api/webhooks/stripe`. En production : créer le point de terminaison dans le tableau de bord Stripe. En attendant, le paiement aboutit par la **vérification directe** auprès de l'API Stripe après confirmation — pas par le navigateur
 - **Domaine à vérifier chez Resend** : sans domaine vérifié, `onboarding@resend.dev` ne peut écrire qu'au titulaire du compte. Aucun client réel ne recevra d'email avant cette étape (+ SPF/DKIM/DMARC)
-- Administration : **dashboard, liste et fiche commande, tournée du jour, stock et tarifs, zones de livraison, créneaux, devis et statistiques ✅ faits**. Restent clients et réglages — écrans en « chantier visible » plutôt qu'en lien mort
+- Administration : **dashboard, liste et fiche commande, tournée du jour, stock et tarifs, zones de livraison, créneaux, devis, statistiques et réglages ✅ faits**. Reste l'enrichissement de la gestion clients.
 - Factures PDF et bons de livraison (le devis PDF sert de modèle : `src/pdf/devis.tsx`)
 - Pages contenu et SEO local, pages légales
 - ImageKit et composant `<Media />`

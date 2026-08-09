@@ -8,6 +8,7 @@ import { formatEuros, formatVolume } from "@/domain/units";
 import { Etapes } from "@/components/commande/etapes";
 import { FormulaireCoordonnees } from "@/components/commande/formulaire-coordonnees";
 import { Button } from "@/components/ui/button";
+import { getRangementSettings } from "@/server/reglages";
 
 export const metadata: Metadata = {
   title: "Vos coordonnées",
@@ -33,14 +34,17 @@ export default async function PageCoordonnees() {
   if (panier.livraison.devis?.status !== "ok") redirect("/panier");
 
   const cartId = await getCartId();
-  const { data: brouillon } = await createSupabaseAdminClient()
+  const [{ data: brouillon }, rangement] = await Promise.all([
+    createSupabaseAdminClient()
     .from("carts")
     .select(
       `first_name, last_name, email, phone, address_line1, address_line2,
        access_notes, truck_access, unload_type, allow_unattended_delivery, delivery_notes`,
     )
     .eq("id", cartId!)
-    .maybeSingle();
+    .maybeSingle(),
+    getRangementSettings(tenant.id),
+  ]);
 
   return (
     <main className="mx-auto max-w-[820px] px-5 py-12 sm:py-16">
@@ -73,6 +77,7 @@ export default async function PageCoordonnees() {
         }}
         ville={panier.ville}
         codePostal={panier.codePostal}
+        rangement={rangement.enabled ? { prixParM3Cents: rangement.pricePerM3Cents } : null}
       />
     </main>
   );

@@ -3,6 +3,8 @@ import "server-only";
 import { cache } from "react";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import type { DeliveryFeeSettings, FuelSettings } from "@/domain/delivery";
+import type { PaymentMethod } from "@/domain/payments";
+import type { Json } from "@/lib/supabase/database.types";
 
 /**
  * Réglages de l'entreprise.
@@ -22,10 +24,18 @@ export interface OrderSettings {
 }
 
 export interface PaymentSettings {
+  enabledMethods: PaymentMethod[];
   cashLimitCents: number;
   depositPercent: number;
   depositTriggerVolumeM3: number;
   depositTriggerKm: number;
+}
+
+export interface RangementSettings {
+  id: string | null;
+  enabled: boolean;
+  pricePerM3Cents: number;
+  vatRate: number;
 }
 
 const DEFAUTS = {
@@ -43,6 +53,18 @@ const DEFAUTS = {
   "fuel.max_surcharge_cents": 3_000,
   "fuel.fallback_price_cents": 175,
 } as const;
+
+const METHODES_PAIEMENT: PaymentMethod[] = ["cash", "check", "transfer", "sumup", "card"];
+
+/** Valeurs brutes, réservées aux écrans d'administration et aux réglages texte. */
+export const getRawSettings = cache(async (companyId: string): Promise<Record<string, Json>> => {
+  const { data, error } = await createSupabaseAdminClient()
+    .from("company_settings")
+    .select("key, value")
+    .eq("company_id", companyId);
+  if (error) console.error("[reglages] lecture brute :", error.message);
+  return Object.fromEntries((data ?? []).map((ligne) => [ligne.key, ligne.value]));
+});
 
 type CleReglage = keyof typeof DEFAUTS;
 
@@ -80,14 +102,39 @@ export async function getOrderSettings(companyId: string): Promise<OrderSettings
 }
 
 export async function getPaymentSettings(companyId: string): Promise<PaymentSettings> {
-  const v = await getSettings(companyId);
+  const [v, bruts] = await Promise.all([getSettings(companyId), getRawSettings(companyId)]);
+  const methodes = Array.isArray(bruts["payment.enabled_methods"])
+    ? bruts["payment.enabled_methods"].filter(
+        (methode): methode is PaymentMethod =>
+          typeof methode === "string" && METHODES_PAIEMENT.includes(methode as PaymentMethod),
+      )
+    : METHODES_PAIEMENT;
   return {
+    enabledMethods: methodes.length > 0 ? methodes : METHODES_PAIEMENT,
     cashLimitCents: lire(v, "payment.cash_limit_cents"),
     depositPercent: lire(v, "payment.deposit_percent"),
     depositTriggerVolumeM3: lire(v, "payment.deposit_trigger_volume_m3"),
     depositTriggerKm: lire(v, "payment.deposit_trigger_km"),
   };
 }
+
+/** Option rangement canonique : prix TTC par m³ apparent, TVA service à 20 %. */
+export const getRangementSettings = cache(async (companyId: string): Promise<RangementSettings> => {
+  const { data, error } = await createSupabaseAdminClient()
+    .from("product_options")
+    .select("id, price_cents, vat_rate, is_active")
+    .eq("company_id", companyId)
+    .eq("code", "rangement")
+    .maybeSingle();
+
+  if (error) console.error("[reglages] option rangement :", error.message);
+  return {
+    id: data?.id ?? null,
+    enabled: data?.is_active ?? true,
+    pricePerM3Cents: data?.price_cents ?? 2_000,
+    vatRate: Number(data?.vat_rate ?? 20),
+  };
+});
 
 export async function getDeliveryFeeSettings(companyId: string): Promise<DeliveryFeeSettings> {
   const v = await getSettings(companyId);

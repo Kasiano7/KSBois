@@ -25,7 +25,8 @@ export async function envoyerConfirmationCommande(orderId: string): Promise<void
       `id, company_id, reference, email, first_name, total_cents, delivery_total_cents,
        total_volume_m3, shipping_address, requested_slot_label, payment_method,
        amount_paid_cents, payment_status,
-       order_items ( product_name, variant_label, cut_length_cm, line_volume_m3, line_total_cents )`,
+       order_items ( product_name, variant_label, cut_length_cm, line_volume_m3, line_total_cents ),
+       order_option_items ( name, price_cents )`,
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -96,6 +97,10 @@ export async function envoyerConfirmationCommande(orderId: string): Promise<void
         volumeM3: Number(l.line_volume_m3),
         totalCents: l.line_total_cents,
         coefficient: coefficientPour(l.cut_length_cm),
+      })),
+      options: (commande.order_option_items ?? []).map((option) => ({
+        nom: option.name,
+        totalCents: option.price_cents,
       })),
       volumeTotalM3: Number(commande.total_volume_m3),
       livraisonCents: commande.delivery_total_cents,

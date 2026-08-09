@@ -14,7 +14,7 @@ import {
   verifierEtAppliquerPaiement,
   type IntentionPaiement,
 } from "@/server/paiement";
-import { getPaymentSettings } from "@/server/reglages";
+import { getPaymentSettings, getRawSettings } from "@/server/reglages";
 import { uuidLike } from "@/lib/validation";
 import {
   evaluateDeposit,
@@ -219,9 +219,12 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
   }
 
   // --- Revalidation du mode de paiement contre les règles serveur ---
-  const reglagesPaiement = await getPaymentSettings(tenant.id);
+  const [reglagesPaiement, reglagesBruts] = await Promise.all([
+    getPaymentSettings(tenant.id),
+    getRawSettings(tenant.id),
+  ]);
   const contexte: PaymentAvailabilityInput = {
-    enabledMethods: ["cash", "check", "transfer", "sumup", "card"],
+    enabledMethods: reglagesPaiement.enabledMethods,
     totalCents: panier.totaux.totalCents,
     volumeM3: panier.totaux.totalVolumeM3,
     distanceKm: panier.livraison.distanceKm ?? 0,
@@ -311,6 +314,7 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
       requested_slot_label: creneauSouhaite,
       delivery_notes: brouillon.delivery_notes,
       subtotal_cents: panier.totaux.subtotalCents,
+      options_cents: panier.totaux.optionsCents,
       discount_cents: panier.totaux.discountCents,
       delivery_base_cents: devis?.status === "ok" ? devis.baseCents : 0,
       delivery_volume_cents: devis?.status === "ok" ? devis.volumeCents : 0,
@@ -323,7 +327,10 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
       payment_method: methode,
       payment_status: "pending",
       deposit_required_cents: acompte.required ? acompte.amountCents : 0,
-      cgv_version: "2026-08",
+      cgv_version:
+        typeof reglagesBruts["legal.cgv_version"] === "string"
+          ? reglagesBruts["legal.cgv_version"]
+          : "2026-08",
       cgv_accepted_at: new Date().toISOString(),
       fuel_price_snapshot_cents: panier.livraison.prixCarburantCents,
       source: "web",
@@ -365,6 +372,24 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
     console.error("[commande] lignes :", erreurLignes.message);
     await supabase.from("orders").delete().eq("id", commande.id);
     return { ok: false, message: "La commande n'a pas pu être enregistrée." };
+  }
+
+  if (panier.options.length > 0) {
+    const { error: erreurOptions } = await supabase.from("order_option_items").insert(
+      panier.options.map((option) => ({
+        company_id: tenant.id,
+        order_id: commande.id,
+        option_id: option.optionId,
+        name: option.name,
+        price_cents: option.totalCents,
+        vat_rate: option.vatRate,
+      })),
+    );
+    if (erreurOptions) {
+      console.error("[commande] options :", erreurOptions.message);
+      await supabase.from("orders").delete().eq("id", commande.id);
+      return { ok: false, message: "La commande n'a pas pu être enregistrée." };
+    }
   }
 
   // --- Réservation atomique du stock ---

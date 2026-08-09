@@ -326,6 +326,10 @@ La taille `sm` (36 px) subsiste, **réservée aux tableaux denses de l'administr
 
 ## 9 ter. Accueil — maquette client du 9 août 2026
 
+La marque de l'en-tête public (lien de retour à l'accueil) est pilotée par les réglages :
+`companies.name`, `branding.tagline` et `branding.logo_url`. Sans logo configuré, l'icône sapin
+reste le repli accessible. Le changement est commun aux deux variantes de l'en-tête.
+
 Le client a fourni une maquette de l'accueil. Elle a été suivie pour la **mise en page** ; les écarts ci-dessous sont assumés et datés.
 
 **Repris de la maquette :**

@@ -61,13 +61,23 @@ export async function EnteteSite({
       <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 sm:py-5">
         {/* ── Marque : retour à l'accueil depuis n'importe quelle page ── */}
         <Link href="/" className="group flex items-center gap-3">
-          <TreePine size={30} strokeWidth={1.5} className="text-seve shrink-0" aria-hidden="true" />
+          {tenant.logoUrl ? (
+            // Le logo est administrable et peut venir du CDN choisi par l'entreprise.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={tenant.logoUrl}
+              alt=""
+              className="h-11 w-auto max-w-28 shrink-0 object-contain"
+            />
+          ) : (
+            <TreePine size={30} strokeWidth={1.5} className="text-seve shrink-0" aria-hidden="true" />
+          )}
           <span>
             <span className="font-display text-aubier block text-[24px] leading-none group-hover:underline group-hover:underline-offset-4">
               {tenant.name}
             </span>
             <span className="micro-label text-cendre-clair mt-1 block text-[10px]">
-              Bois de chauffage
+              {tenant.tagline}
               {tenant.city ? ` · ${tenant.city}` : ""}
             </span>
           </span>

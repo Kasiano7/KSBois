@@ -115,6 +115,22 @@ describe("computeOrderTotals", () => {
     });
     expect(totals.vatBreakdown).toEqual([]);
   });
+
+  it("ajoute le rangement au volume et le ventile à 20 %", () => {
+    const totals = computeOrderTotals({
+      lines: [computeLine(chene33, 3)],
+      options: [
+        { code: "rangement", name: "Rangement du bois", totalCents: 6_000, vatRate: 20 },
+      ],
+    });
+
+    expect(totals.optionsCents).toBe(6_000);
+    expect(totals.totalCents).toBe(35_700);
+    expect(totals.vatBreakdown.map((bucket) => bucket.rate)).toEqual([10, 20]);
+    expect(totals.vatBreakdown.reduce((somme, bucket) => somme + bucket.baseTtcCents, 0)).toBe(
+      totals.totalCents,
+    );
+  });
 });
 
 describe("computeVatBreakdown", () => {

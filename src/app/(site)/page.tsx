@@ -56,19 +56,32 @@ export default async function Accueil() {
           le titre reste lisible quel que soit le recadrage (docs/03 §10 :
           jamais de texte sur photo sans voile de lisibilité contrôlé).
           ═══════════════════════════════════════════════════════════════ */}
-      <section className="registre-sombre relative isolate overflow-hidden">
+      <section className="registre-sombre relative isolate overflow-hidden bg-[#100d0a] sm:min-h-[680px]">
+        {/* ⚠️ PAS de `object-cover` sur grand écran, et c'est tout l'enjeu.
+
+            `cover` dimensionne l'image sur le PLUS CONTRAIGNANT des deux axes.
+            Sur une photo panoramique (16:9) posée dans un bandeau large et
+            court, c'est la largeur qui pilote tant que la fenêtre est très
+            large — puis la HAUTEUR reprend la main dès qu'elle se resserre, et
+            l'image bondit : à 2048 px le facteur d'échelle valait 1,22, à
+            1265 px il passait à 0,88 sur la largeur mais 0,88 sur la hauteur…
+            soit un bûcheron 40 % plus gros d'une résolution à l'autre.
+
+            On pilote donc la LARGEUR seule, entre deux bornes rapprochées, et
+            on laisse la hauteur suivre le ratio naturel. Conséquence assumée :
+            sur un écran très large, la photo ne touche pas le bord gauche —
+            on y voit du fond sombre, ce qui vaut mieux qu'un zoom. Le voile
+            étant quasi opaque de ce côté, la jonction ne se voit pas.
+
+            Sur téléphone, `cover` reste le bon choix : le bandeau est alors
+            plus haut que large et il n'y a pas de composition à préserver. */}
         <Image
           src={herosBucheron}
           alt=""
-          fill
           priority
-          sizes="100vw"
+          sizes="(max-width: 640px) 100vw, 1700px"
           placeholder="blur"
-          /* Cadrage centré : sur grand écran le bandeau est plus large que la
-             photo, le rognage est donc vertical et la position horizontale n'a
-             aucun effet. Sur téléphone, en revanche, elle décide de ce qu'on
-             voit — et c'est le bûcheron qu'on veut garder, pas la cabane. */
-          className="-z-20 object-cover object-center"
+          className="pointer-events-none absolute inset-0 -z-20 h-full w-full object-cover object-center select-none sm:inset-auto sm:top-0 sm:right-0 sm:h-auto sm:w-[clamp(1500px,100vw,1620px)] sm:max-w-none"
         />
 
         {/* Voile de lisibilité, en deux régimes.
@@ -86,8 +99,10 @@ export default async function Accueil() {
           aria-hidden="true"
           className="absolute inset-0 -z-10 hidden sm:block"
           style={{
+            // Opaque au bord gauche : sur écran très large, c'est là que la
+            // photo s'arrête, et le voile masque la jonction.
             background:
-              "linear-gradient(100deg, rgba(16,13,10,0.95) 0%, rgba(16,13,10,0.86) 34%, rgba(16,13,10,0.42) 62%, rgba(16,13,10,0.30) 100%)",
+              "linear-gradient(100deg, rgba(16,13,10,1) 0%, rgba(16,13,10,0.92) 26%, rgba(16,13,10,0.60) 52%, rgba(16,13,10,0.30) 78%, rgba(16,13,10,0.22) 100%)",
           }}
         />
 

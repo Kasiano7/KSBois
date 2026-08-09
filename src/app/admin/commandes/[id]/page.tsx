@@ -43,6 +43,7 @@ export default async function PageCommande({ params }: PageProps<"/admin/command
       `*, order_items ( product_name, variant_label, quantity, line_volume_m3,
         unit_price_cents, line_total_cents, vat_rate ),
        order_status_history ( from_status, to_status, note, actor, created_at ),
+       order_option_items ( name, price_cents, vat_rate ),
        payments ( method, amount_cents, status, received_at, reference )`,
     )
     .eq("id", id)
@@ -119,6 +120,12 @@ export default async function PageCommande({ params }: PageProps<"/admin/command
                   <dd className="tabulaire">−{formatEuros(commande.discount_cents)}</dd>
                 </div>
               )}
+              {(commande.order_option_items ?? []).map((option, index) => (
+                <div key={index} className="text-cendre-clair flex justify-between gap-3">
+                  <dt>{option.name}</dt>
+                  <dd className="tabulaire">{formatEuros(option.price_cents)}</dd>
+                </div>
+              ))}
 
               {/* Le détail n'est affiché que s'il RECONSTITUE le total des frais.
                   Une livraison fixée à la main (devis hors zone) n'a ni forfait

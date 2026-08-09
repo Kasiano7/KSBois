@@ -60,6 +60,14 @@ insert into company_settings (company_id, key, value) values
   ('11111111-1111-1111-1111-111111111111', 'fuel.fallback_price_cents', '175'),
   ('11111111-1111-1111-1111-111111111111', 'legal.cgv_version', '"2026-08"');
 
+insert into product_options (
+  company_id, code, name, description, price_cents, price_type, vat_rate, applies_to, is_active
+) values (
+  '11111111-1111-1111-1111-111111111111', 'rangement', 'Rangement du bois',
+  'Bois transporté et rangé à l''emplacement indiqué par le client.',
+  2000, 'per_m3', 20.00, 'order', true
+);
+
 -- Essences (nord Ardèche)
 insert into wood_species (company_id, code, name, hardness_group, calorific_kwh_per_m3, description, warning, sort_order) values
   ('11111111-1111-1111-1111-111111111111','chene','Chêne','G1',2000,'Braise longue, chaleur durable',null,1),

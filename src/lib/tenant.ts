@@ -39,6 +39,8 @@ export interface Tenant {
   id: string;
   slug: string;
   name: string;
+  tagline: string;
+  logoUrl: string | null;
   email: string;
   phone: string | null;
   phoneDisplay: string | null;
@@ -116,20 +118,37 @@ export const getTenant = cache(async (): Promise<Tenant | null> => {
     return null;
   }
 
-  const [{ data: company, error: companyError }, { data: theme }, { data: features }] =
+  const [
+    { data: company, error: companyError },
+    { data: theme },
+    { data: features },
+    { data: branding },
+  ] =
     await Promise.all([
       supabase.from("companies").select("*").eq("id", companyId).single(),
       supabase.from("company_themes").select("*").eq("company_id", companyId).maybeSingle(),
       supabase.from("company_features").select("*").eq("company_id", companyId).maybeSingle(),
+      supabase
+        .from("company_settings")
+        .select("key, value")
+        .eq("company_id", companyId)
+        .in("key", ["branding.tagline", "branding.logo_url"]),
     ]);
 
   if (companyError) console.error("[tenant] lecture companies :", companyError.message);
   if (!company) return null;
 
+  const valeurMarque = (cle: string): string | null => {
+    const brut = branding?.find((ligne) => ligne.key === cle)?.value;
+    return typeof brut === "string" && brut.trim() ? brut.trim() : null;
+  };
+
   return {
     id: company.id,
     slug: company.slug,
     name: company.name,
+    tagline: valeurMarque("branding.tagline") ?? "Bois de chauffage",
+    logoUrl: valeurMarque("branding.logo_url"),
     email: company.email,
     phone: company.phone,
     phoneDisplay: company.phone_display,

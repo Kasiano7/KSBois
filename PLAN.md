@@ -82,6 +82,7 @@ Récapitulatif des arbitrages validés. **Toute déviation nécessite une décis
 | Granulés / pellets | Développés mais **désactivables par flag** (`features.pellets`) |
 | Conditionnements | Vrac (défaut), palette, filet, sac — chacun activable par flag |
 | Options payantes | Système d'options configurables (rangement, petite quantité, allume-feu) |
+| Rangement | **20 € TTC / m³ apparent par défaut**, modifiable dans `/admin/reglages`; TVA service **20 %**, snapshot sur la commande |
 | Quantité minimum | Configurable globalement **et par zone** |
 
 ### 2.3 Livraison

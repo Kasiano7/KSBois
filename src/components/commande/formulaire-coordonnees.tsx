@@ -40,25 +40,31 @@ const ACCES = [
   { valeur: "remorque_seule", libelle: "Petite remorque", aide: "Accès très difficile" },
 ];
 
-const DECHARGEMENT = [
-  { valeur: "vrac_sol", libelle: "En vrac au sol" },
-  { valeur: "benne", libelle: "Déversé à la benne" },
-  { valeur: "range", libelle: "Rangé (sur devis)" },
-];
-
 export function FormulaireCoordonnees({
   valeurs,
   ville,
   codePostal,
+  rangement,
 }: {
   valeurs: Valeurs;
   ville: string | null;
   codePostal: string | null;
+  rangement: { prixParM3Cents: number } | null;
 }) {
   const router = useRouter();
   const [enCours, demarrer] = useTransition();
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
   const [messageGlobal, setMessageGlobal] = useState<string | null>(null);
+  const dechargements = [
+    { valeur: "vrac_sol", libelle: "En vrac au sol" },
+    { valeur: "benne", libelle: "Déversé à la benne" },
+    ...(rangement
+      ? [{
+          valeur: "range",
+          libelle: `Rangé · ${(rangement.prixParM3Cents / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € / m³`,
+        }]
+      : []),
+  ];
 
   /**
    * ⚠️ `onSubmit` + `preventDefault`, et NON `action={}` : React réinitialise le
@@ -209,7 +215,7 @@ export function FormulaireCoordonnees({
         <fieldset className="mt-6">
           <legend className="micro-label text-cendre mb-3">Déchargement souhaité</legend>
           <div className="flex flex-wrap gap-x-6 gap-y-2.5">
-            {DECHARGEMENT.map((d) => (
+            {dechargements.map((d) => (
               <label key={d.valeur} className="flex cursor-pointer items-center gap-2.5 text-[17px]">
                 <input
                   type="radio"

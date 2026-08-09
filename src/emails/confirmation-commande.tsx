@@ -23,6 +23,7 @@ export interface DonneesConfirmation {
     /** L'équivalence en stères dépend de la longueur de coupe. */
     coefficient: number | null;
   }[];
+  options: { nom: string; totalCents: number }[];
   volumeTotalM3: number;
   livraisonCents: number;
   totalCents: number;
@@ -74,6 +75,11 @@ export function ConfirmationCommande(d: DonneesConfirmation) {
             </strong>
             <br />
             {l.produit} · {l.format} — {formatEuros(l.totalCents)}
+          </Text>
+        ))}
+        {d.options.map((option, i) => (
+          <Text key={`option-${i}`} style={{ ...styles.discret, margin: "8px 0" }}>
+            {option.nom} : <strong>{formatEuros(option.totalCents)}</strong>
           </Text>
         ))}
 

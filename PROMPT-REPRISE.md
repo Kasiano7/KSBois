@@ -52,7 +52,7 @@ Résolution du tenant par nom de domaine, thème injecté depuis la base.
 **Domaine métier testé** (`src/domain/`) : unités et coefficients d'empilage,
 prix et paliers dégressifs, TVA multi-taux, zones et sélection de véhicule,
 surcharge carburant plafonnée, créneaux à double capacité, moyens de paiement,
-machine à états des commandes, relevé de carburant et statistiques. **186 tests unitaires.**
+machine à états des commandes, relevé de carburant et statistiques. **207 tests unitaires.**
 
 **Parcours client complet.** Configurateur d'accueil en trois volets (longueur à
 l'échelle réelle, essence, panneau « Votre sélection » avec le total en grand),
@@ -88,6 +88,10 @@ en commande en un clic sans ressaisie), **statistiques** (origine des ventes,
 prix réel au m³, tunnel et abandons, demande perdue, autonomie du stock,
 devis, rentabilité des zones, délais et clients à réactiver).
 
+**Réglages.** `/admin/reglages` est opérationnel : entreprise, identité visuelle (nom, logo,
+sous-titre, couleurs), commandes, rangement à 20 €/m³ modifiable, paiements, facturation,
+notifications, textes légaux et fonctionnalités. Les écritures sont réservées au gérant et auditées.
+
 **Espace client.** Connexion par lien magique sans mot de passe
 (`/compte/connexion`), création de compte proposée à la confirmation de commande
 et dans l'email, rattachement automatique des commandes passées en invité sur
@@ -100,7 +104,7 @@ a bougé ou si le stock ne suit plus, l'écran le dit et renvoie au panier.
 
 1. **Factures PDF et bons de livraison** — `src/pdf/document-devis.tsx` sert de modèle (mise en page commune, deux adaptateurs). Attention : `invoices` stocke des données structurées, pas seulement un PDF, pour préparer Factur-X.
 2. **Modèles d'email restants** : rappel la veille, livraison effectuée avec facture, récap quotidien à 7 h.
-3. **Écrans clients et réglages** — actuellement des pages « chantier visible » qui décrivent ce qu'elles feront.
+3. **Enrichissement clients et médias** — gestion client avancée, upload/sélecteur ImageKit et utilisateurs de l'entreprise.
 4. **Pages de contenu et SEO local** — accueil narrative, notre entreprise, savoir-faire, galerie, guides, pages communes, pages légales (CGV, mentions, rétractation, confidentialité).
 5. **ImageKit** — compte à créer, puis composant `<Media />` unique et transformations nommées (`docs/04`).
 
@@ -146,7 +150,7 @@ toutes les pages tombent en erreur `fetch failed`.
 npm run verify
 ```
 
-Enchaîne typecheck, lint, 186 tests unitaires et le test d'isolation
+Enchaîne typecheck, lint, 207 tests unitaires et le test d'isolation
 multi-tenant. **Il doit rester à zéro.** Comptes de démonstration :
 `patron@demo.local` et `secretariat@demo.local`, mot de passe `demo1234`.
 
