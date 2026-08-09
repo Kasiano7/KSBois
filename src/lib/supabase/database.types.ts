@@ -733,6 +733,8 @@ export type Database = {
       customers: {
         Row: {
           accepts_marketing: boolean
+          anonymized_at: string | null
+          blocked_reason: string | null
           company_id: string
           company_name: string | null
           created_at: string
@@ -754,6 +756,8 @@ export type Database = {
         }
         Insert: {
           accepts_marketing?: boolean
+          anonymized_at?: string | null
+          blocked_reason?: string | null
           company_id: string
           company_name?: string | null
           created_at?: string
@@ -775,6 +779,8 @@ export type Database = {
         }
         Update: {
           accepts_marketing?: boolean
+          anonymized_at?: string | null
+          blocked_reason?: string | null
           company_id?: string
           company_name?: string | null
           created_at?: string
@@ -2773,6 +2779,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      anonymize_customer: {
+        Args: { p_company_id: string; p_customer_id: string }
+        Returns: undefined
+      }
       apply_stock_movement: {
         Args: {
           p_actor?: string
@@ -2799,6 +2809,10 @@ export type Database = {
       }
       is_company_owner: { Args: { cid: string }; Returns: boolean }
       is_company_staff: { Args: { cid: string }; Returns: boolean }
+      merge_customers: {
+        Args: { p_company_id: string; p_source_id: string; p_target_id: string }
+        Returns: undefined
+      }
       next_document_number: {
         Args: { p_company_id: string; p_kind: string }
         Returns: string

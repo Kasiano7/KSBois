@@ -95,6 +95,15 @@ Création et optimisation du Google Business Profile (catégorie « Fournisseur 
 
 ## 2. Sécurité
 
+### 2.0 Données clients et droit à l'effacement
+
+L'export clients est authentifié, limité à `owner`/`staff`, non mis en cache et journalisé. Les
+valeurs CSV susceptibles d'être interprétées comme des formules par un tableur sont neutralisées.
+Fusion et anonymisation sont réservées à `owner`, vérifient `company_id` dans la fonction SQL et ne
+sont exécutables par aucun rôle navigateur. L'anonymisation ne place jamais l'ancienne identité dans
+`audit_log`; elle conserve uniquement un fait technique (« anonymisé ») et les documents comptables
+dont la conservation est légalement requise.
+
 Le site manipule des données personnelles, des adresses de domicile, des historiques d'achat et des paiements. Le niveau attendu est celui d'un produit vendu comme premium.
 
 ### 2.1 Authentification

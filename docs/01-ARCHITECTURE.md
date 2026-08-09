@@ -231,6 +231,8 @@ create table customers (
   price_group_id uuid,                        -- tarifs négociés (V2)
   internal_notes text,                        -- visible admin uniquement
   is_blocked boolean default false,
+  blocked_reason text,                        -- obligatoire lors d'un blocage admin
+  anonymized_at timestamptz,                  -- droit à l'effacement exécuté
   accepts_marketing boolean default false,
   total_orders integer default 0, total_spent_cents bigint default 0,
   created_at timestamptz default now()
@@ -365,6 +367,12 @@ create table product_options (
   unique (company_id, code)
 );
 ```
+
+La migration `20260809150000_admin_clients.sql` ajoute deux fonctions `security definer`, exécutables
+uniquement par `service_role` : `merge_customers` déplace atomiquement commandes, adresses et
+paniers vers la fiche conservée ; `anonymize_customer` efface les données personnelles, les
+snapshots de livraison et le compte Auth éventuel, sauf si ce compte est aussi membre d'une
+entreprise. Les factures structurées restent intactes pour l'obligation comptable.
 
 Le code `rangement` est créé par la migration `20260809140000_reglages_rangement.sql` à
 **2 000 centimes TTC par m³ apparent** (`price_type = 'per_m3'`, TVA 20 %). La ligne

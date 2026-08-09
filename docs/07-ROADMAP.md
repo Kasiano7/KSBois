@@ -93,12 +93,14 @@ npm run verify
 
 - **Écran réglages** (`/admin/reglages`) : identité légale et coordonnées, nom/logo/sous-titre et six couleurs, règles de commande, moyens de paiement et acompte, TVA et mentions documentaires, notifications, textes légaux et feature flags. Le rangement est désormais une vraie option serveur à **20 € TTC / m³ apparent** par défaut, modifiable, ventilée à 20 % de TVA et figée sur la commande.
 
+- **Écran clients** (`/admin/clients` et `/admin/clients/[id]`) : recherche instantanée nom/email/téléphone/commune, filtres fidélité/professionnels/blocage, CA réel, export CSV sûr, fiche avec coordonnées, adresses et contraintes d'accès, commandes, factures, notes, rythme d'achat et prochaine commande estimée. Préparation d'une commande préremplie, blocage motivé appliqué côté serveur, fusion atomique des doublons et anonymisation RGPD auditée.
+
 **⏳ Reste à faire sur le lot 1**
 
 - Modèles d'email restants : rappel la veille, livraison effectuée avec facture, récap quotidien
 - **`STRIPE_WEBHOOK_SECRET` à obtenir** : le webhook est écrit, signé et idempotent, mais inactif sans son secret. En local : `stripe listen --forward-to localhost:3000/api/webhooks/stripe`. En production : créer le point de terminaison dans le tableau de bord Stripe. En attendant, le paiement aboutit par la **vérification directe** auprès de l'API Stripe après confirmation — pas par le navigateur
 - **Domaine à vérifier chez Resend** : sans domaine vérifié, `onboarding@resend.dev` ne peut écrire qu'au titulaire du compte. Aucun client réel ne recevra d'email avant cette étape (+ SPF/DKIM/DMARC)
-- Administration : **dashboard, liste et fiche commande, tournée du jour, stock et tarifs, zones de livraison, créneaux, devis, statistiques et réglages ✅ faits**. Reste l'enrichissement de la gestion clients.
+- Administration : **dashboard, commandes, tournée du jour, stock et tarifs, clients, zones de livraison, créneaux, devis, statistiques et réglages ✅ faits**.
 - Factures PDF et bons de livraison (le devis PDF sert de modèle : `src/pdf/devis.tsx`)
 - Pages contenu et SEO local, pages légales
 - ImageKit et composant `<Media />`

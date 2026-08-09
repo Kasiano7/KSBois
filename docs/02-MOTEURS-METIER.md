@@ -262,6 +262,15 @@ Le champ « Prévenez-moi quand c'est disponible » transforme une rupture en le
 
 ## 5. Machine à états des commandes
 
+### 5.0 Commande préparée depuis l'administration
+
+Depuis une fiche client, l'administration prépare un panier serveur vide et préremplit coordonnées,
+adresse par défaut et contraintes d'accès. Un cookie `httpOnly` de quatre heures marque ce parcours,
+mais il ne fait jamais foi seul : à la validation, une session `owner` ou `staff` du même tenant est
+revérifiée. La commande reçoit alors `source = 'admin'` et `created_by`. Sans session valide, le
+parcours retombe sur une commande web normale. Dans tous les cas, une fiche bloquée est refusée côté
+serveur, y compris si le navigateur tente de contourner l'interface.
+
 ### 5.1 Transitions autorisées
 
 ```

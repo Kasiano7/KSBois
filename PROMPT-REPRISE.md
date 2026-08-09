@@ -42,7 +42,7 @@ d'écrire du code Next**, ne te fie pas à ta mémoire.
 ## 3. Ce qui est fait
 
 **Socle.** Next.js 16.3 + TypeScript strict + Tailwind v4 + shadcn/ui remappé sur
-la charte. Supabase local en Docker (ports 545xx). 11 migrations : schéma complet,
+la charte. Supabase local en Docker (ports 545xx). 14 migrations : schéma complet,
 fonctions transactionnelles, RLS, GRANT, brouillon de commande, ordre de tournée,
 relevés de carburant, traçabilité des fermetures de créneaux, proposition
 commerciale des devis, rattachement des commandes à une fiche client. Seed à deux
@@ -92,6 +92,10 @@ devis, rentabilité des zones, délais et clients à réactiver).
 sous-titre, couleurs), commandes, rangement à 20 €/m³ modifiable, paiements, facturation,
 notifications, textes légaux et fonctionnalités. Les écritures sont réservées au gérant et auditées.
 
+**Clients.** `/admin/clients` et les fiches détaillées sont opérationnels : recherche instantanée,
+indicateurs calculés depuis les commandes, adresses, historique, factures, notes, export CSV,
+commande préremplie, blocage motivé, fusion de doublons et anonymisation RGPD atomique.
+
 **Espace client.** Connexion par lien magique sans mot de passe
 (`/compte/connexion`), création de compte proposée à la confirmation de commande
 et dans l'email, rattachement automatique des commandes passées en invité sur
@@ -104,7 +108,7 @@ a bougé ou si le stock ne suit plus, l'écran le dit et renvoie au panier.
 
 1. **Factures PDF et bons de livraison** — `src/pdf/document-devis.tsx` sert de modèle (mise en page commune, deux adaptateurs). Attention : `invoices` stocke des données structurées, pas seulement un PDF, pour préparer Factur-X.
 2. **Modèles d'email restants** : rappel la veille, livraison effectuée avec facture, récap quotidien à 7 h.
-3. **Enrichissement clients et médias** — gestion client avancée, upload/sélecteur ImageKit et utilisateurs de l'entreprise.
+3. **Médias et utilisateurs de l'entreprise** — upload/sélecteur ImageKit et gestion des invitations/rôles depuis les réglages.
 4. **Pages de contenu et SEO local** — accueil narrative, notre entreprise, savoir-faire, galerie, guides, pages communes, pages légales (CGV, mentions, rétractation, confidentialité).
 5. **ImageKit** — compte à créer, puis composant `<Media />` unique et transformations nommées (`docs/04`).
 

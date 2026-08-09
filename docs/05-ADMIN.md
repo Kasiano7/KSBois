@@ -245,6 +245,24 @@ Liste avec recherche instantanée par nom, email, téléphone, commune. Colonnes
 
 Actions : bloquer un client (motif obligatoire), fusionner deux fiches doublons, exporter en CSV, supprimer les données personnelles (droit à l'effacement RGPD — anonymise le client, conserve les commandes pour l'obligation comptable).
 
+✅ **Implémenté le 9 août 2026.** La liste calcule les compteurs et le CA depuis les commandes
+réelles, sans faire confiance aux colonnes récapitulatives de `customers`. La recherche instantanée
+porte sur le nom, l'email, le téléphone, la société et la commune ; les filtres isolent clients
+fidèles, professionnels et bloqués. L'export CSV neutralise les cellules commençant par un signe de
+formule avant ouverture dans Excel.
+
+La fiche rassemble coordonnées modifiables, adresses et contraintes d'accès, commandes, factures,
+notes internes et indicateurs (ancienneté, panier moyen, volume, rythme médian et prochaine commande
+probable). « Créer une commande » prépare un panier serveur vide avec le client et son adresse par
+défaut, puis l'exploitant choisit les produits ; la commande finale porte `source = 'admin'` et
+`created_by` quand la session gérant/secrétariat est toujours valide.
+
+Le blocage exige un motif et empêche aussi le tunnel public de créer une commande. La fusion et
+l'anonymisation sont réservées au gérant et exécutées par des fonctions Postgres atomiques. La
+fusion déplace commandes, adresses et paniers ; l'anonymisation supprime coordonnées, adresses,
+accès au compte et snapshots de livraison, tout en conservant montants et factures nécessaires à la
+comptabilité. Le journal d'audit ne recopie aucune donnée personnelle après effacement.
+
 ---
 
 ## 8. Statistiques `/admin/statistiques`

@@ -23,6 +23,7 @@ import {
   type PaymentMethod,
 } from "@/domain/payments";
 import { initialStatus } from "@/domain/orders/state-machine";
+import { getSession } from "@/lib/auth";
 import {
   enregistrerEvenementAnalytics,
   getAttributionCommande,
@@ -197,7 +198,7 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
   const { data: brouillon } = await supabase
     .from("carts")
     .select(
-      `email, phone, first_name, last_name, fulfillment_type, address_line1,
+      `email, phone, first_name, last_name, customer_id, fulfillment_type, address_line1,
        address_line2, access_notes, truck_access, unload_type,
        allow_unattended_delivery, slot_id, delivery_notes, postal_code, city,
        delivery_slots ( date, label )`,
@@ -209,6 +210,12 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
   if (!brouillon?.email || !brouillon.first_name || !brouillon.last_name) {
     return { ok: false, message: "Vos coordonnées sont incomplètes." };
   }
+
+  const storeCookies = await cookies();
+  const sessionAdmin = storeCookies.get("commande_admin") ? await getSession() : null;
+  const commandeAdmin =
+    sessionAdmin?.companyId === tenant.id &&
+    (sessionAdmin.role === "owner" || sessionAdmin.role === "staff");
 
   const livraisonRequise = brouillon.fulfillment_type === "delivery";
   if (livraisonRequise && panier.livraison.devis?.status !== "ok") {
@@ -277,20 +284,60 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
   // ⚠️ Sans elle, `orders.customer_id` reste nul et la policy
   // `orders_customer_read` ne rend AUCUNE ligne : l'espace client serait vide,
   // même pour un client qui vient de commander (docs/01 §4.2).
-  const { data: customerId, error: erreurClient } = await supabase.rpc("upsert_customer", {
-    p_company_id: tenant.id,
-    p_email: brouillon.email,
-    // Les paramètres facultatifs de la fonction Postgres ont un défaut `null` :
-    // on passe `undefined` pour les laisser jouer, jamais `null` explicitement.
-    p_first_name: brouillon.first_name ?? undefined,
-    p_last_name: brouillon.last_name ?? undefined,
-    p_phone: brouillon.phone ?? undefined,
-  });
+  let customerId: string | null = null;
+  let erreurClient: { message: string } | null = null;
+
+  // Une commande préparée depuis la fiche client conserve cette fiche précise,
+  // même si l'exploitant corrige l'email pendant l'appel.
+  if (brouillon.customer_id && commandeAdmin) {
+    const { data: clientPrepare } = await supabase
+      .from("customers")
+      .select("id, is_blocked, blocked_reason, anonymized_at")
+      .eq("company_id", tenant.id)
+      .eq("id", brouillon.customer_id)
+      .maybeSingle();
+    if (!clientPrepare || clientPrepare.anonymized_at) {
+      return { ok: false, message: "Cette fiche client n'est plus disponible." };
+    }
+    if (clientPrepare.is_blocked) {
+      return {
+        ok: false,
+        message: `Ce client est bloqué${clientPrepare.blocked_reason ? ` : ${clientPrepare.blocked_reason}` : "."}`,
+      };
+    }
+    customerId = clientPrepare.id;
+  } else {
+    const resultatClient = await supabase.rpc("upsert_customer", {
+      p_company_id: tenant.id,
+      p_email: brouillon.email,
+      // Les paramètres facultatifs de la fonction Postgres ont un défaut `null` :
+      // on passe `undefined` pour les laisser jouer, jamais `null` explicitement.
+      p_first_name: brouillon.first_name ?? undefined,
+      p_last_name: brouillon.last_name ?? undefined,
+      p_phone: brouillon.phone ?? undefined,
+    });
+    customerId = resultatClient.data;
+    erreurClient = resultatClient.error;
+  }
 
   if (erreurClient) {
     // Non bloquant : une commande sans fiche client reste une commande valide,
     // et le rattachement se fera à la création du compte.
     console.error("[commande] fiche client :", erreurClient.message);
+  }
+  if (customerId) {
+    const { data: clientExistant } = await supabase
+      .from("customers")
+      .select("is_blocked, blocked_reason")
+      .eq("company_id", tenant.id)
+      .eq("id", customerId)
+      .maybeSingle();
+    if (clientExistant?.is_blocked) {
+      return {
+        ok: false,
+        message: `Ce client ne peut pas commander${clientExistant.blocked_reason ? ` : ${clientExistant.blocked_reason}` : "."}`,
+      };
+    }
   }
 
   const { data: commande, error: erreurCommande } = await supabase
@@ -333,7 +380,8 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
           : "2026-08",
       cgv_accepted_at: new Date().toISOString(),
       fuel_price_snapshot_cents: panier.livraison.prixCarburantCents,
-      source: "web",
+      source: commandeAdmin ? "admin" : "web",
+      created_by: commandeAdmin ? sessionAdmin.userId : null,
       analytics_session_id: attribution.sessionId,
       acquisition_source: attribution.source,
       quote_pdf_before_order: attribution.devisPdfAvantCommande,
@@ -482,8 +530,9 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
   if (methode !== "card") {
     await supabase.from("cart_items").delete().eq("cart_id", cartId);
     await supabase.from("carts").delete().eq("id", cartId);
-    (await cookies()).delete("panier_id");
+    storeCookies.delete("panier_id");
   }
+  if (commandeAdmin) storeCookies.delete("commande_admin");
 
   const destination = `/commande/confirmation/${commande.reference}?jeton=${token}`;
 
