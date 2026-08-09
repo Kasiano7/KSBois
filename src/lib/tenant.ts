@@ -73,12 +73,11 @@ const DEFAULT_FEATURES: TenantFeatures = {
  * base par requête HTTP, quel que soit le nombre de composants qui l'appellent.
  */
 export const getTenant = cache(async (): Promise<Tenant | null> => {
-  if (!isSupabaseConfigured()) return null;
-
   // La résolution dépend du domaine de la requête. En particulier, elle ne
   // doit jamais s'exécuter pendant le prerender Vercel, où aucun domaine client
   // réel n'est disponible.
   await connection();
+  if (!isSupabaseConfigured()) return null;
   const headerList = await headers();
   const host = headerList.get("host") ?? "";
   const hostname = host.split(":")[0];
