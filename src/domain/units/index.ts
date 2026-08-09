@@ -80,16 +80,70 @@ export function formatVolume(m3: M3Apparent): string {
 }
 
 /**
- * Mention secondaire rassurante, affichée à côté du volume officiel.
- * Réservée à l'ÉCRAN : contient le caractère « ≈ ».
- * @example formatStereHint(3) → "≈ 3 stères"
+ * Équivalent en stères de bois de 1 m d'un volume apparent livré à une longueur
+ * donnée.
+ *
+ * ⚠️ CORRECTION D'UN BUG : on affichait « ≈ X stères » pour X m³ apparents, quelle
+ * que soit la longueur de coupe. C'était faux, et cela vidait de son sens le
+ * coefficient d'empilage du PLAN.md §3.2.
+ *
+ * Le stère se définit comme 1 m³ apparent de rondins de 1 m. Recoupé plus court,
+ * le bois s'empile plus dense : un stère de 1 m ne remplit plus que 0,70 m³
+ * apparent en 33 cm. Réciproquement, 1 m³ apparent de bûches de 33 cm contient
+ * la matière de 1 / 0,70 ≈ 1,43 stère.
+ *
+ * @example steresEquivalent1m(2, 0.70) → 2.857  (2 m³app en 33 cm)
+ * @example steresEquivalent1m(2, 1)    → 2      (bois en 1 m : identité)
  */
-export function formatStereHint(m3: M3Apparent): string {
-  return `≈ ${volumeFormatter.format(m3)} stère${m3 >= 2 ? "s" : ""}`;
+export function steresEquivalent1m(
+  m3Apparent: M3Apparent,
+  stackingCoefficient: number,
+): number {
+  if (!Number.isFinite(stackingCoefficient) || stackingCoefficient <= 0) return m3Apparent;
+  return roundVolume(m3Apparent / stackingCoefficient);
+}
+
+/**
+ * Mention secondaire, affichée à côté du volume officiel.
+ * Réservée à l'ÉCRAN : contient le caractère « ≈ ».
+ *
+ * Le coefficient est OBLIGATOIRE : sans lui, on retomberait dans le bug de
+ * l'équivalence systématique 1 m³ apparent = 1 stère.
+ *
+ * @example formatStereHint(2, 0.70) → "≈ 2,86 stères de bois de 1 m"
+ */
+export function formatStereHint(m3: M3Apparent, stackingCoefficient: number): string {
+  const steres = steresEquivalent1m(m3, stackingCoefficient);
+  const valeur = volumeFormatter.format(steres);
+  return `≈ ${valeur} stère${steres >= 2 ? "s" : ""} de bois de 1 m`;
+}
+
+/**
+ * Phrase d'équivalence complète, à afficher sous la quantité.
+ * Retourne `null` quand il n'y a rien à expliquer — bois déjà en 1 m, ou
+ * longueur inconnue. On n'encombre pas l'écran d'une évidence.
+ */
+export function formatEquivalenceSteres(
+  m3Apparent: M3Apparent,
+  cutLengthCm: number | null,
+  stackingCoefficient: number | null,
+): string | null {
+  if (cutLengthCm === null || stackingCoefficient === null) return null;
+  if (Math.abs(stackingCoefficient - 1) < 0.001) return null;
+
+  const steres = steresEquivalent1m(m3Apparent, stackingCoefficient);
+  return (
+    `Soit la matière d'environ ${volumeFormatter.format(steres)} stère` +
+    `${steres >= 2 ? "s" : ""} de bois en 1 m : coupé en ${cutLengthCm} cm, ` +
+    `le bois s'empile plus dense.`
+  );
 }
 
 /**
  * Variante pour les DOCUMENTS PDF.
+ *
+ * ⚠️ Le coefficient est requis pour la même raison que `formatStereHint` :
+ * l'équivalence en stères dépend de la longueur de coupe.
  *
  * ⚠️ Ne jamais utiliser « ≈ » dans un PDF : ce caractère (U+2248) est absent de
  * l'encodage WinAnsi des polices standard, et @react-pdf le remplace
@@ -98,10 +152,12 @@ export function formatStereHint(m3: M3Apparent): string {
  * aux caractères WinAnsi — « environ » est de toute façon plus clair sur un
  * document commercial.
  *
- * @example formatStereHintPdf(3) → "environ 3 stères"
+ * @example formatStereHintPdf(2, 0.70) → "environ 2,86 steres de bois de 1 m"
  */
-export function formatStereHintPdf(m3: M3Apparent): string {
-  return `environ ${volumeFormatter.format(m3)} stère${m3 >= 2 ? "s" : ""}`;
+export function formatStereHintPdf(m3: M3Apparent, stackingCoefficient: number): string {
+  const steres = steresEquivalent1m(m3, stackingCoefficient);
+  const valeur = volumeFormatter.format(steres);
+  return `environ ${valeur} stère${steres >= 2 ? "s" : ""} de bois de 1 m`;
 }
 
 /**

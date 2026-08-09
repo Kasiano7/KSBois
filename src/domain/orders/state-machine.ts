@@ -112,11 +112,19 @@ export function assertTransition(from: OrderStatus, to: OrderStatus): void {
  * Une commande payée à la livraison n'est JAMAIS `payee` avant la livraison :
  * elle part directement en préparation, et l'encaissement est enregistré au
  * passage à `livree`.
+ *
+ * `null` = mode de paiement pas encore arrêté. C'est le cas d'une commande créée
+ * par l'exploitant depuis un devis accepté ou par téléphone : elle est ferme,
+ * mais le règlement se décidera plus tard. Elle reste donc `nouvelle`, ce qui
+ * permet ensuite d'aller vers n'importe lequel des chemins de paiement.
  */
-export function initialStatus(method: "card" | "cash" | "check" | "transfer" | "sumup"): OrderStatus {
+export function initialStatus(
+  method: "card" | "cash" | "check" | "transfer" | "sumup" | null,
+): OrderStatus {
   switch (method) {
+    case null:
     case "card":
-      return "nouvelle"; // devient `payee` sur webhook Stripe uniquement
+      return "nouvelle"; // en carte, devient `payee` sur webhook Stripe uniquement
     case "cash":
     case "sumup":
       return "a_preparer";

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ShoppingCart, FileDown, AlertTriangle } from "lucide-react";
 import { requireTenant } from "@/lib/tenant";
 import { getPanier } from "@/server/panier";
-import { formatEuros, formatVolume, formatStereHint } from "@/domain/units";
+import { formatEuros, formatVolume } from "@/domain/units";
 import { ChampDestination } from "@/components/panier/champ-destination";
 import { LignePanier } from "@/components/panier/ligne-panier";
 import { RecapLivraison } from "@/components/panier/recap-livraison";
@@ -71,9 +71,15 @@ export default async function PagePanier() {
           </ul>
 
           <div className="border-aubier-bord mt-4 border-t pt-4">
+            {/*
+              Pas d'équivalence en stères sur le total : un panier peut mêler
+              plusieurs longueurs de coupe, dont les coefficients d'empilage
+              diffèrent. Un chiffre unique serait faux. L'équivalence reste
+              affichée LIGNE PAR LIGNE, où elle a un sens.
+            */}
             <p className="text-cendre text-[15px]">
-              Total commandé : <strong className="text-encre">{formatVolume(panier.totaux.totalVolumeM3)}</strong>{" "}
-              ({formatStereHint(panier.totaux.totalVolumeM3)})
+              Total commandé :{" "}
+              <strong className="text-encre">{formatVolume(panier.totaux.totalVolumeM3)}</strong>
             </p>
           </div>
         </div>

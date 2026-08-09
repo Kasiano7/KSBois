@@ -8,6 +8,7 @@ import { joursDeLivraison } from "@/server/zones";
 import { isLastPlaces } from "@/domain/slots";
 import { Etapes } from "@/components/commande/etapes";
 import { ChoixCreneau } from "@/components/commande/choix-creneau";
+import { SuiviCreneauxIndisponibles } from "@/components/analytics/suivi-parcours";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -57,6 +58,7 @@ export default async function PageCreneau() {
 
       {groupes.length === 0 ? (
         <div className="border-alerte/30 bg-alerte/8 mt-8 rounded-[6px] border p-5">
+          <SuiviCreneauxIndisponibles />
           <p className="font-semibold">Aucun créneau disponible pour votre commande</p>
           <p className="mt-2 text-[15px] leading-relaxed">
             Votre volume ({panier.totaux.totalVolumeM3.toLocaleString("fr-FR")} m³ apparents) ne

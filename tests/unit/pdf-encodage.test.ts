@@ -39,7 +39,7 @@ describe("chaînes destinées aux PDF", () => {
 
   it("formatStereHintPdf est sûr pour un PDF", () => {
     for (const v of volumes) {
-      const texte = formatStereHintPdf(v);
+      const texte = formatStereHintPdf(v, 0.7);
       expect(caracteresNonWinAnsi(texte), texte).toEqual([]);
       expect(texte).toContain("environ");
       expect(texte).not.toContain("≈");
@@ -65,7 +65,7 @@ describe("chaînes destinées aux PDF", () => {
 
   it("formatStereHint reste réservé à l'écran et contient bien ≈", () => {
     // Documenté volontairement : c'est la version qu'il ne faut PAS mettre en PDF.
-    expect(formatStereHint(5)).toContain("≈");
-    expect(caracteresNonWinAnsi(formatStereHint(5))).toEqual(["≈"]);
+    expect(formatStereHint(5, 0.7)).toContain("≈");
+    expect(caracteresNonWinAnsi(formatStereHint(5, 0.7))).toEqual(["≈"]);
   });
 });

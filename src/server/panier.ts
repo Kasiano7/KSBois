@@ -41,6 +41,8 @@ export interface LignePanier {
   variantLabel: string;
   sku: string;
   cutLengthCm: number | null;
+  /** Nécessaire pour convertir en stères : l'équivalence dépend de la coupe. */
+  stackingCoefficient: number | null;
   humidityClass: string | null;
   packaging: string;
   quantity: number;
@@ -152,7 +154,7 @@ type ItemRow = {
     allow_backorder: boolean;
     track_stock: boolean;
     is_active: boolean;
-    cut_lengths: { cm: number; label: string } | null;
+    cut_lengths: { cm: number; label: string; stacking_coefficient: number } | null;
     price_tiers: { min_quantity: number; unit_price_cents: number }[];
     products: { name: string; slug: string; is_active: boolean } | null;
   } | null;
@@ -206,7 +208,7 @@ export async function getPanier(tenant: Tenant): Promise<PanierResume> {
        product_variants (
          id, sku, humidity_class, packaging, unit_volume_m3, base_price_cents,
          vat_rate, stock_available, allow_backorder, track_stock, is_active,
-         cut_lengths ( cm, label ),
+         cut_lengths ( cm, label, stacking_coefficient ),
          price_tiers ( min_quantity, unit_price_cents ),
          products ( name, slug, is_active )
        )`,
@@ -260,6 +262,10 @@ export async function getPanier(tenant: Tenant): Promise<PanierResume> {
       variantLabel: v.cut_lengths?.label ?? v.sku,
       sku: v.sku,
       cutLengthCm: v.cut_lengths?.cm ?? null,
+      stackingCoefficient:
+        v.cut_lengths?.stacking_coefficient === undefined
+          ? null
+          : Number(v.cut_lengths.stacking_coefficient),
       humidityClass: v.humidity_class,
       packaging: v.packaging,
       quantity,

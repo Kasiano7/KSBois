@@ -52,6 +52,16 @@ insert into orders (id, company_id, reference, customer_id, email, total_cents, 
    'CMD-TEST-SAVOIE','cccccccc-0000-0000-0000-000000000002','client.savoie@test.local',30000,3)
 on conflict (id) do nothing;
 
+insert into analytics_sessions (id, company_id, acquisition_source) values
+  ('eeeeeeee-0000-0000-0000-000000000001','11111111-1111-1111-1111-111111111111','seo'),
+  ('eeeeeeee-0000-0000-0000-000000000002','99999999-9999-9999-9999-999999999999','direct')
+on conflict (id) do nothing;
+
+insert into analytics_events (company_id, session_id, event_type) values
+  ('11111111-1111-1111-1111-111111111111','eeeeeeee-0000-0000-0000-000000000001','visit'),
+  ('99999999-9999-9999-9999-999999999999','eeeeeeee-0000-0000-0000-000000000002','visit')
+on conflict do nothing;
+
 -- -----------------------------------------------------------------------------
 -- Harnais
 -- -----------------------------------------------------------------------------
@@ -104,6 +114,10 @@ begin
     (select count(*) from stock_movements where company_id = '99999999-9999-9999-9999-999999999999'));
   perform assert_hidden('Ardèche NE VOIT PAS les promotions de Savoie',
     (select count(*) from promotions where company_id = '99999999-9999-9999-9999-999999999999'));
+  perform assert_visible('Ardèche voit SES statistiques',
+    (select count(*) from analytics_events where company_id = '11111111-1111-1111-1111-111111111111'));
+  perform assert_hidden('Ardèche NE VOIT PAS les statistiques de Savoie',
+    (select count(*) from analytics_events where company_id = '99999999-9999-9999-9999-999999999999'));
 end;
 $$;
 
@@ -135,6 +149,8 @@ begin
     (select count(*) from orders where company_id = '11111111-1111-1111-1111-111111111111'));
   perform assert_hidden('Savoie NE VOIT PAS les réglages d''Ardèche',
     (select count(*) from company_settings where company_id = '11111111-1111-1111-1111-111111111111'));
+  perform assert_hidden('Savoie NE VOIT PAS les statistiques d''Ardèche',
+    (select count(*) from analytics_events where company_id = '11111111-1111-1111-1111-111111111111'));
 end;
 $$;
 
@@ -166,7 +182,8 @@ begin
   foreach t in array array[
     'customers','orders','payments','invoices','promotions','company_settings',
     'fuel_prices','stock_movements','audit_log','document_sequences',
-    'order_access_tokens','carts','processed_webhook_events'
+    'order_access_tokens','carts','processed_webhook_events',
+    'analytics_sessions','analytics_events'
   ]
   loop
     begin

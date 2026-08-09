@@ -282,8 +282,8 @@ Le châtaignier est très présent en Ardèche : il **doit** porter un avertisse
 
 ## 6. Périmètre MVP (Lot 1) — ce qui est dans la boîte au lancement
 
-**Inclus :** catalogue produits/variantes · fiche produit avec sélecteur de longueur · panier serveur · devis PDF depuis le panier · vérification de zone par commune · calcul de frais avec surcharge carburant · choix de créneau souhaité · commande invité · Stripe + espèces + chèque + virement · emails transactionnels · compte client + recommande · admin (produits, stock, commandes, clients, zones, créneaux, réglages) · dashboard · tournée du jour · demande de devis · pages entreprise/savoir-faire/galerie · pages communes SEO · mentions légales/CGV/RGPD.
+**Inclus :** catalogue produits/variantes · fiche produit avec sélecteur de longueur · panier serveur · devis PDF depuis le panier · vérification de zone par commune · calcul de frais avec surcharge carburant · choix de créneau souhaité · commande invité · Stripe + espèces + chèque + virement · emails transactionnels · compte client + recommande · admin (produits, stock, commandes, clients, zones, créneaux, statistiques, réglages) · dashboard · tournée du jour · demande de devis · pages entreprise/savoir-faire/galerie · pages communes SEO · mentions légales/CGV/RGPD.
 
-**Reporté (Lot 2+) :** optimisation automatique de tournée · SMS · granulés · multi-stock séchage · promotions avancées · statistiques poussées · simulateur de besoin · application livreur hors-ligne · portail B2B avec tarifs négociés.
+**Reporté (Lot 2+) :** optimisation automatique de tournée · SMS · granulés · multi-stock séchage · promotions avancées · carte de chaleur géographique · simulateur de besoin · application livreur hors-ligne · portail B2B avec tarifs négociés.
 
 Détail complet et critères de recette : `docs/07-ROADMAP.md`.

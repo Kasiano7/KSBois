@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...sauf le modèle, qui ne contient aucun secret et documente les variables
+# attendues. Sans lui, un nouveau développeur ne sait pas quoi renseigner.
+!.env.example
 
 # vercel
 .vercel

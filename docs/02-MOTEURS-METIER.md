@@ -176,6 +176,12 @@ Cron hebdomadaire → generate_slots(horizon = booking_horizon_days, défaut 45)
       INSERT delivery_slots (idempotent via la contrainte unique)
 ```
 
+**Implémenté** : fonction Postgres `generate_delivery_slots(company_id, horizon_days)`, appelée par le cron `/api/cron/generate-slots` (lundi 4 h, horizon + 14 jours de marge pour couvrir l'intervalle entre deux passages) et par le bouton « Générer les dates » de `/admin/livraison/creneaux`.
+
+⚠️ **Panne silencieuse à connaître.** La génération est ponctuelle, l'horizon recule d'un jour par jour écoulé. Sans passage régulier, le tunnel de commande finit par ne proposer **aucune** date — sans erreur, sans log, sans alerte. C'est pourquoi l'écran créneaux affiche en permanence jusqu'à quelle date les clients peuvent réserver et alerte avant l'épuisement. Toute reprise de ce code doit conserver ce signal.
+
+**Fermeture d'une période après génération.** Créer un `slot_blackout` empêche les générations futures mais ne touche pas aux dates déjà en base : `book_slot()` ne regarde que `is_open`. L'action d'administration ferme donc réellement les créneaux de la période et mémorise le lien (`delivery_slots.closed_by_blackout_id`) pour pouvoir les rouvrir — et eux seuls — si la fermeture est annulée.
+
 ```
 Disponibilité d'un créneau pour une commande donnée :
   is_open = true
@@ -382,6 +388,22 @@ Formulaire pour les cas hors standard : gros volumes, professionnels, hors zone,
 
 **Traitement admin :** la demande arrive dans `/admin/devis` avec un badge, l'admin voit une estimation pré-calculée qu'il peut ajuster, et répond par un devis PDF envoyé par email. Le devis accepté peut être **converti en commande en un clic** — c'est ce qui évite la double saisie.
 
+**Implémenté** — décisions à ne pas défaire :
+
+| Sujet | Choix retenu | Pourquoi |
+|---|---|---|
+| Demande vs proposition | La demande du client n'est **jamais** modifiée ; la proposition vit à côté (`proposal_lines`) | On doit toujours pouvoir relire ce que le client a réellement écrit |
+| Stockage de la proposition | Uniquement `variantId` + quantité. Aucun prix de ligne en base | Même règle que le panier : le serveur rechiffre à chaque lecture (PLAN.md §5.1). Un devis d'il y a un mois affiche les prix du jour |
+| Montants décidés | Seules la **remise** et la **livraison fixée à la main** sont stockées en centimes | Ce sont des décisions humaines, pas des calculs |
+| Livraison hors zone | Champ de saisie libre, obligatoire quand la commune n'est pas desservie | C'est le cas le plus fréquent d'une demande de devis : le moteur n'a aucune grille à appliquer, il ne faut pas faire semblant |
+| Remise | Passe par `computeOrderTotals` en `discount: fixed` | La remise s'applique avant la livraison et se ventile dans la TVA — le faire à la main ici aurait produit une TVA fausse |
+| PDF | Même document que le devis du panier (`src/pdf/document-devis.tsx`), deux adaptateurs | Un client qui reçoit les deux doit reconnaître la même entreprise |
+| Encadré du PDF | Le devis du panier porte la mention d'indicativité ; celui envoyé par l'exploitant porte une **durée de validité** | Une machine peut se dédire dans la minute, pas un patron qui envoie une offre nominative. Sans date saisie, on retombe honnêtement sur l'indicativité |
+| Conversion | `next_document_number` + `reserve_order_stock`, exactement comme le tunnel client ; aucun créneau réservé | Une commande née d'un devis doit être indiscernable d'une autre. La date se cale au téléphone |
+| Double conversion | Bloquée par `converted_order_id` | Deux clics créeraient deux commandes et réserveraient deux fois le stock |
+| Statut de la commande créée | `nouvelle` (aucun mode de paiement arrêté) | Le règlement se décide plus tard ; tous les chemins restent ouverts (`initialStatus(null)`) |
+| Échec d'envoi d'email | Le devis passe quand même en « envoyé », avec un message qui dit **franchement** que rien n'est parti et invite à télécharger le PDF | Tant que le domaine Resend n'est pas vérifié, prétendre le contraire ferait perdre des clients en silence |
+
 **Anti-spam :** honeypot + rate limiting par IP (5/heure) + Turnstile si le volume de spam le justifie. Pas de captcha visible par défaut : ça coûte des leads.
 
 ---
@@ -417,7 +439,8 @@ Le compteur `used_count` n'est incrémenté qu'à la **confirmation** de la comm
 | **Rappel veille de livraison, 18h** | ✅ | ✅ | — |
 | Livraison effectuée + facture | ✅ | ❌ | — |
 | Commande annulée | ✅ | ❌ | ✅ |
-| Demande de devis reçue | accusé de réception | ❌ | ✅ + email |
+| Demande de devis reçue ✅ | accusé de réception | ❌ | ✅ + email |
+| Devis chiffré envoyé ✅ | ✅ + PDF joint | ❌ | — |
 | Stock bas | — | — | ✅ email quotidien |
 | **Récap quotidien 7h** | — | — | ✅ email |
 | Produit de nouveau en stock | ✅ (opt-in) | ❌ | — |
@@ -462,3 +485,34 @@ Le panier est persisté en base (`carts` + `cart_items`), identifié par un cook
 À la connexion, le panier invité est **fusionné** avec l'éventuel panier du compte (union des lignes, quantité maximale conservée, message explicite si fusion).
 
 À chaque lecture, le panier revalide : variante toujours active ? prix inchangé ? stock suffisant ? Toute divergence produit un bandeau clair — *« Le prix du chêne 33 cm est passé de 104 € à 108 €. »* — jamais une correction silencieuse.
+
+---
+
+## 11. Moteur de statistiques
+
+### 11.1 Deux familles de chiffres, jamais mélangées
+
+- **Réalisé** : commandes, lignes de commande, paiements, mouvements de stock, historique de statut et devis. Ces données font foi pour le CA, les volumes, les délais et la rentabilité.
+- **Potentiel** : événements anonymes du tunnel et blocages. Ils estiment la demande perdue à partir du panier recalculé par le serveur. Ils ne sont jamais ajoutés au CA.
+
+Le CA affiché dans l'écran est le total TTC des commandes non annulées. Le prix réellement vendu au m³ exclut livraison et options, puis répartit la remise de commande au prorata des lignes avant de diviser par le volume vendu. Cette définition est identique pour le global, l'essence, la longueur, la zone et le mois.
+
+### 11.2 Tunnel mesuré
+
+```
+session anonyme → panier avec produit → zone vérifiée → créneau consulté
+                 → paiement consulté → commande créée
+```
+
+Chaque étape est enregistrée une seule fois par session de 30 minutes. L'abandon d'une étape est `sessions étape N - sessions étape N+1`. Une période antérieure au déploiement de l'instrumentation reste vide et l'interface affiche la date réelle de début de mesure : aucune reconstitution n'est faite.
+
+### 11.3 Demande perdue
+
+Motifs structurés : `out_of_zone`, `unknown_postal_code`, `out_of_stock`, `no_slot`, `payment_failed`. L'événement stocke le volume et le montant potentiel uniquement lorsqu'ils peuvent être recalculés depuis le panier ou la commande. Un doublon identique sur la même session et le même panier est ignoré pendant dix minutes.
+
+### 11.4 Prévisions opérationnelles
+
+- **Autonomie du stock** = stock disponible / vitesse quotidienne des ventes sur la fenêtre configurée.
+- **Coût réel estimé d'une livraison** = carburant aller-retour au prix figé sur la commande + coût kilométrique du véhicule. La main-d'œuvre est explicitement exclue tant qu'elle n'est pas modélisée.
+- **Client à réactiver** = client avec au moins deux commandes, dont la prochaine date estimée par l'intervalle médian tombe dans la fenêtre configurée.
+- Les fenêtres et seuils vivent dans `company_settings` (`statistics.*`), pas dans l'interface.

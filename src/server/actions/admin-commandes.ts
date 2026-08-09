@@ -4,7 +4,11 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { assertRole } from "@/lib/auth";
+import { requireTenant } from "@/lib/tenant";
 import { uuidLike } from "@/lib/validation";
+import { formatDateCreneau } from "@/server/creneaux";
+import { envoyerEmail } from "@/server/notifications";
+import { LivraisonConfirmee } from "@/emails/livraison-confirmee";
 import {
   ORDER_STATUSES,
   ORDER_STATUS_LABELS,
@@ -25,6 +29,8 @@ import {
 export interface ResultatAdmin {
   ok: boolean;
   message?: string;
+  /** Renseigné quand l'action déclenche une notification client. */
+  emailEnvoye?: boolean;
 }
 
 const ChangementSchema = z.object({
@@ -126,6 +132,7 @@ const ConfirmationSchema = z.object({
  */
 export async function confirmerLivraison(entree: unknown): Promise<ResultatAdmin> {
   const session = await assertRole(["owner", "staff"]);
+  const tenant = await requireTenant();
   const parsed = ConfirmationSchema.safeParse(entree);
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Requête invalide." };
@@ -136,7 +143,10 @@ export async function confirmerLivraison(entree: unknown): Promise<ResultatAdmin
 
   const { data: commande } = await supabase
     .from("orders")
-    .select("id, status")
+    .select(
+      `id, status, reference, email, first_name, phone, total_cents, amount_paid_cents,
+       payment_method, payment_status, total_volume_m3, shipping_address`,
+    )
     .eq("id", orderId)
     .eq("company_id", session.companyId)
     .maybeSingle();
@@ -165,14 +175,42 @@ export async function confirmerLivraison(entree: unknown): Promise<ResultatAdmin
     });
   }
 
-  // TODO : email + SMS « Votre livraison est confirmée » (docs/02 §9.1).
+  // --- Email « votre livraison est confirmée » : le message qui engage ---
+  const adresse = (commande.shipping_address ?? {}) as { line1?: string; city?: string };
+  const resteAPayer =
+    commande.payment_status === "paid"
+      ? 0
+      : commande.total_cents - (commande.amount_paid_cents ?? 0);
+
+  const envoi = await envoyerEmail({
+    companyId: session.companyId,
+    destinataire: commande.email,
+    sujet: `Votre livraison est confirmée — ${formatDateCreneau(date)}`,
+    modele: "livraison_confirmee",
+    orderId: commande.id,
+    contenu: LivraisonConfirmee({
+      entreprise: tenant.name,
+      telephone: tenant.phoneDisplay ?? tenant.phone,
+      reference: commande.reference,
+      prenom: commande.first_name ?? "",
+      dateLisible: formatDateCreneau(date),
+      creneau,
+      volumeM3: Number(commande.total_volume_m3),
+      adresse: adresse.line1 ?? "",
+      ville: adresse.city ?? "",
+      modePaiement: commande.payment_method ?? "cash",
+      resteAPayerCents: resteAPayer,
+    }),
+  });
+
+  // TODO : SMS de confirmation puis rappel la veille (docs/02 §9.1).
 
   revalidatePath("/admin");
   revalidatePath("/admin/commandes");
   revalidatePath(`/admin/commandes/${orderId}`);
   revalidatePath("/admin/tournee");
 
-  return { ok: true };
+  return { ok: true, emailEnvoye: envoi.envoye };
 }
 
 const PaiementSchema = z.object({

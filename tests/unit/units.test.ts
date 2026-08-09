@@ -43,9 +43,11 @@ describe("formatage", () => {
     expect(formatVolume(2.5)).toBe("2,5 m³ apparents");
   });
 
-  it("produit la mention stère en secondaire", () => {
-    expect(formatStereHint(1)).toBe("≈ 1 stère");
-    expect(formatStereHint(4)).toBe("≈ 4 stères");
+  it("produit la mention stère en secondaire, dépendante de la coupe", () => {
+    // Bois en 1 m : l'équivalence est une identité.
+    expect(formatStereHint(1, 1)).toBe("≈ 1 stère de bois de 1 m");
+    expect(formatStereHint(4, 1)).toBe("≈ 4 stères de bois de 1 m");
+    // Conversion détaillée dans tests/unit/steres.test.ts.
   });
 
   it("compose la phrase de la fiche produit", () => {

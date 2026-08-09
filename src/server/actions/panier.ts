@@ -4,10 +4,11 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { requireTenant } from "@/lib/tenant";
-import { ensureCart, getCartId } from "@/server/panier";
+import { ensureCart, getCartId, getPanier } from "@/server/panier";
 import { normaliserCodePostal, resolveZone } from "@/server/zones";
 import { validateQuantity } from "@/domain/units";
 import { uuidLike } from "@/lib/validation";
+import { enregistrerEvenementAnalytics } from "@/server/analytics";
 
 /**
  * Server Actions du panier.
@@ -42,7 +43,8 @@ export async function ajouterAuPanier(entree: unknown): Promise<ResultatAction> 
   const { data: variante } = await supabase
     .from("product_variants")
     .select(
-      `id, min_quantity, max_quantity, quantity_step, is_active, track_stock,
+      `id, min_quantity, max_quantity, quantity_step, unit_volume_m3, base_price_cents,
+       is_active, track_stock,
        allow_backorder, stock_available, products ( is_active )`,
     )
     .eq("id", parsed.data.variantId)
@@ -65,6 +67,13 @@ export async function ajouterAuPanier(entree: unknown): Promise<ResultatAction> 
     !variante.allow_backorder &&
     parsed.data.quantity > Number(variante.stock_available ?? 0)
   ) {
+    await enregistrerEvenementAnalytics(tenant.id, {
+      type: "lost_demand",
+      motif: "out_of_stock",
+      variantId: variante.id,
+      caPotentielCents: Math.round(variante.base_price_cents * parsed.data.quantity),
+      volumePotentielM3: Number(variante.unit_volume_m3) * parsed.data.quantity,
+    });
     return {
       ok: false,
       message: `Nous n'avons que ${Number(variante.stock_available ?? 0).toLocaleString("fr-FR")} m³ apparents en stock pour ce format.`,
@@ -209,6 +218,25 @@ export async function definirDestination(
     .eq("id", cartId);
 
   if (error) return { ok: false, message: "Enregistrement impossible." };
+
+  const panier = await getPanier(tenant);
+  await enregistrerEvenementAnalytics(tenant.id, {
+    type: "zone_check",
+    cartId,
+    zoneId: resolution.status === "ok" ? resolution.zone.id : null,
+    caPotentielCents: panier.totaux.totalCents,
+    volumePotentielM3: panier.totaux.totalVolumeM3,
+  });
+
+  if (resolution.status === "not_served" || resolution.status === "unknown") {
+    await enregistrerEvenementAnalytics(tenant.id, {
+      type: "lost_demand",
+      cartId,
+      motif: resolution.status === "not_served" ? "out_of_zone" : "unknown_postal_code",
+      caPotentielCents: panier.totaux.subtotalCents,
+      volumePotentielM3: panier.totaux.totalVolumeM3,
+    });
+  }
 
   revalidatePath("/panier");
 

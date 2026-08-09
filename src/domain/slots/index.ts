@@ -143,3 +143,143 @@ export function availableSlots(slots: Slot[], ctx: SlotContext): SlotAvailabilit
 export function isLastPlaces(dispo: SlotAvailability, seuil = 2): boolean {
   return dispo.available && dispo.remainingDeliveries <= seuil;
 }
+
+// -----------------------------------------------------------------------------
+// Remplissage — vue ADMINISTRATION (docs/05 §6.2)
+//
+// Le client voit « disponible ou non » ; l'exploitant doit voir OÙ il en est et
+// SURTOUT laquelle des deux contraintes le limite. Une matinée à 5/6 livraisons
+// mais 17/18 m³ est pleine, et ce n'est pas le compteur de livraisons qui le dit.
+// -----------------------------------------------------------------------------
+
+export interface SlotOccupancy {
+  /** Part de la capacité en nombre de livraisons déjà consommée (0 à 1). */
+  deliveriesRatio: number;
+  /** Part de la capacité en volume déjà consommée (0 à 1). */
+  volumeRatio: number;
+  remainingDeliveries: number;
+  remainingVolumeM3: number;
+  /** Plus rien n'est réservable, quelle que soit la taille de la commande. */
+  saturated: boolean;
+  /** La contrainte la plus avancée — celle qui fermera le créneau en premier. */
+  binding: "livraisons" | "volume" | null;
+}
+
+type SlotCapacity = Pick<
+  Slot,
+  "maxDeliveries" | "maxVolumeM3" | "bookedDeliveries" | "bookedVolumeM3"
+>;
+
+function ratio(consomme: number, capacite: number): number {
+  // Capacité nulle ou aberrante : on considère le créneau plein plutôt que de
+  // renvoyer l'infini, qui casserait l'affichage.
+  if (!Number.isFinite(capacite) || capacite <= 0) return 1;
+  return Math.min(1, Math.max(0, consomme / capacite));
+}
+
+export function slotOccupancy(slot: SlotCapacity): SlotOccupancy {
+  const remainingDeliveries = slot.maxDeliveries - slot.bookedDeliveries;
+  const remainingVolumeM3 = Math.round((slot.maxVolumeM3 - slot.bookedVolumeM3) * 1000) / 1000;
+
+  const deliveriesRatio = ratio(slot.bookedDeliveries, slot.maxDeliveries);
+  const volumeRatio = ratio(slot.bookedVolumeM3, slot.maxVolumeM3);
+
+  let binding: SlotOccupancy["binding"] = null;
+  if (deliveriesRatio > 0 || volumeRatio > 0) {
+    // À égalité, c'est le volume qu'on désigne : c'est la contrainte qui décide
+    // réellement d'une journée de livraison (docs/02 §3.2).
+    binding = deliveriesRatio > volumeRatio ? "livraisons" : "volume";
+  }
+
+  return {
+    deliveriesRatio,
+    volumeRatio,
+    remainingDeliveries,
+    remainingVolumeM3,
+    saturated: remainingDeliveries < 1 || remainingVolumeM3 <= 0,
+    binding,
+  };
+}
+
+/**
+ * Le créneau est-il inutilisable en pratique ?
+ *
+ * Piège constaté à l'écran : un créneau à 23,5 / 24 m³ s'affiche « ouvert » avec
+ * « 0,5 m³ libres », alors qu'aucun client ne peut plus le réserver — la
+ * commande minimum est d'un mètre cube. L'exploitant croit avoir de la place,
+ * le site ne propose rien, et personne ne comprend pourquoi.
+ */
+export function isEffectivelyFull(occupancy: SlotOccupancy, minOrderVolumeM3: number): boolean {
+  if (occupancy.saturated) return true;
+  if (minOrderVolumeM3 <= 0) return false;
+  return occupancy.remainingVolumeM3 < minOrderVolumeM3;
+}
+
+// -----------------------------------------------------------------------------
+// Horaires — saisie et affichage des modèles récurrents
+// -----------------------------------------------------------------------------
+
+/** « 08:00 », « 08:00:00 » → minutes depuis minuit. `null` si illisible. */
+export function minutesDepuisMinuit(heure: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(heure.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  return h * 60 + min;
+}
+
+export interface PlageHoraire {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+}
+
+/**
+ * Deux plages du même jour se chevauchent-elles ?
+ *
+ * La contrainte d'unicité en base ne rattrape que les doublons EXACTS : sans ce
+ * contrôle, on peut créer « 8h–12h » puis « 10h–14h » le même mardi et vendre
+ * deux fois la même demi-journée.
+ */
+export function plagesSeChevauchent(a: PlageHoraire, b: PlageHoraire): boolean {
+  if (a.weekday !== b.weekday) return false;
+  const debutA = minutesDepuisMinuit(a.startTime);
+  const finA = minutesDepuisMinuit(a.endTime);
+  const debutB = minutesDepuisMinuit(b.startTime);
+  const finB = minutesDepuisMinuit(b.endTime);
+  if (debutA === null || finA === null || debutB === null || finB === null) return false;
+  // Bornes demi-ouvertes : 8h–12h et 12h–18h s'enchaînent sans se chevaucher.
+  return debutA < finB && debutB < finA;
+}
+
+/** @example formatHeure("08:00:00") → "8h" · formatHeure("08:30") → "8h30" */
+export function formatHeure(heure: string): string {
+  const minutes = minutesDepuisMinuit(heure);
+  if (minutes === null) return heure;
+  const h = Math.floor(minutes / 60);
+  const min = minutes % 60;
+  return min === 0 ? `${h}h` : `${h}h${String(min).padStart(2, "0")}`;
+}
+
+/** @example formatPlageHoraire("08:00","12:00") → "8h – 12h" */
+export function formatPlageHoraire(debut: string, fin: string): string {
+  return `${formatHeure(debut)} – ${formatHeure(fin)}`;
+}
+
+/**
+ * Libellé proposé à la création d'un modèle. L'exploitant peut le remplacer,
+ * mais il n'a jamais de champ vide à remplir pour avancer.
+ *
+ * @example libelleParDefaut("08:00","12:00") → "Matin (8h – 12h)"
+ */
+export function libelleParDefaut(debut: string, fin: string): string {
+  const plage = formatPlageHoraire(debut, fin);
+  const debutMin = minutesDepuisMinuit(debut);
+  const finMin = minutesDepuisMinuit(fin);
+  if (debutMin === null || finMin === null) return plage;
+
+  if (finMin <= 13 * 60) return `Matin (${plage})`;
+  if (debutMin >= 12 * 60) return `Après-midi (${plage})`;
+  return `Journée (${plage})`;
+}

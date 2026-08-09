@@ -90,26 +90,58 @@ export function selectVehicle(
   return eligible[0] ?? null;
 }
 
+export interface FuelSurchargeDetail {
+  /** Montant réellement facturé, plafond appliqué. */
+  cents: Cents;
+  /** Montant avant plafonnement — utile pour l'expliquer à l'exploitant. */
+  rawCents: Cents;
+  /** Vrai quand le plafond a rogné le calcul. */
+  capped: boolean;
+  liters: number;
+}
+
 /**
- * Coût carburant d'un aller-retour vers l'adresse de livraison.
+ * Coût carburant d'un aller-retour, avec le détail du calcul.
  *
- * Garde-fous obligatoires : la surcharge est plafonnée en valeur absolue, et
- * la feature peut être coupée entièrement. Sans cela, une dérive de l'API
- * carburant peut facturer des centaines d'euros de port.
+ * Garde-fous obligatoires : la surcharge est plafonnée en valeur absolue, et la
+ * fonctionnalité peut être coupée. Sans cela, une dérive de l'API carburant peut
+ * facturer des centaines d'euros de port.
+ *
+ * ⚠️ Le plafond doit être VISIBLE dans l'administration : sinon l'exploitant voit
+ * un montant rond sans comprendre qu'il a été rogné, et il perd confiance dans
+ * l'outil — ou pire, il ne s'en aperçoit pas et sous-facture ses livraisons
+ * lointaines.
  */
-export function computeFuelSurcharge(
+export function computeFuelSurchargeDetail(
   distanceKm: number,
   vehicle: Vehicle,
   fuel: FuelSettings,
-): Cents {
-  if (!fuel.enabled || distanceKm <= 0) return 0;
+): FuelSurchargeDetail {
+  if (!fuel.enabled || distanceKm <= 0) {
+    return { cents: 0, rawCents: 0, capped: false, liters: 0 };
+  }
 
   const roundTripKm = distanceKm * 2;
   const liters = (roundTripKm * vehicle.fuelConsumptionLPer100km) / 100;
   const fuelCost = liters * fuel.pricePerLiterCents * fuel.marginCoefficient;
   const wearCost = roundTripKm * vehicle.costPerKmCents;
+  const rawCents = Math.round(fuelCost + wearCost);
 
-  return Math.min(Math.round(fuelCost + wearCost), fuel.maxSurchargeCents);
+  return {
+    cents: Math.min(rawCents, fuel.maxSurchargeCents),
+    rawCents,
+    capped: rawCents > fuel.maxSurchargeCents,
+    liters: Math.round(liters * 100) / 100,
+  };
+}
+
+/** Montant seul. Conserve la signature d'origine pour les appelants existants. */
+export function computeFuelSurcharge(
+  distanceKm: number,
+  vehicle: Vehicle,
+  fuel: FuelSettings,
+): Cents {
+  return computeFuelSurchargeDetail(distanceKm, vehicle, fuel).cents;
 }
 
 /** Arrondi au pas supérieur (50 centimes par défaut). */

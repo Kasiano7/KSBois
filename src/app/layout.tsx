@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Archivo, IBM_Plex_Mono } from "next/font/google";
 import { getTenant, themeToCss } from "@/lib/tenant";
 import { cn } from "@/lib/utils";
+import { SuiviParcours } from "@/components/analytics/suivi-parcours";
 import "./globals.css";
 
 // ⚠️ shadcn init avait ajouté Geist et redéfini --font-sans. Retiré : la police
@@ -68,7 +69,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         )}
         {themeCss && <style>{themeCss}</style>}
       </head>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        <SuiviParcours />
+      </body>
     </html>
   );
 }

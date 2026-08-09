@@ -150,11 +150,11 @@ Checklist bloquante : test de pénétration des politiques RLS · vérification 
 |---|---|
 | Base légale | Exécution du contrat pour les commandes ; consentement pour le marketing (case **non pré-cochée**, séparée des CGV) |
 | Bannière cookies | Refuser aussi accessible qu'accepter, même taille et même contraste. Aucun cookie non essentiel avant consentement. Pas de *dark pattern* |
-| Analytics | Vercel Analytics (sans cookie) ou Plausible auto-hébergé — évite la bannière pour la mesure d'audience |
+| Analytics | Mesure interne du tunnel, limitée au compte exclusif de l'éditeur : session aléatoire de 30 min, aucune IP ni identité, aucune réutilisation publicitaire. Vercel Analytics reste optionnel pour les Web Vitals |
 | Politique de confidentialité | Page dédiée : finalités, durées, destinataires, droits, contact |
 | Droit d'accès | Bouton « Télécharger mes données » dans l'espace client → export JSON |
 | Droit à l'effacement | Demande depuis le compte → anonymisation du client, **conservation des factures 10 ans** (obligation comptable). Le message explique cette limite |
-| Durées de conservation | Comptes inactifs 3 ans (avec relance avant purge) · paniers abandonnés 90 jours · logs 12 mois · factures 10 ans |
+| Durées de conservation | Comptes inactifs 3 ans (avec relance avant purge) · paniers abandonnés 90 jours · logs 12 mois · sessions statistiques et événements 25 mois maximum (purge mensuelle) · factures 10 ans |
 | Sous-traitants | Supabase, Vercel, ImageKit, Stripe, Resend — listés dans la politique, tous avec hébergement UE ou clauses adéquates |
 | Registre | Modèle fourni au client, à tenir par lui |
 | Minimisation | Aucun champ collecté « au cas où ». Chaque champ du formulaire doit justifier son existence |
@@ -186,7 +186,7 @@ Séquence : migrations → déploiement → vérification santé → bascule DNS
 
 ### 4.4 Surveillance
 
-Sentry (erreurs, avec alerte email au-delà d'un seuil) · Vercel Analytics et Speed Insights · alerte si le cron carburant échoue 2 jours de suite · alerte si un webhook Stripe échoue · surveillance de disponibilité externe (UptimeRobot) sur l'accueil et le tunnel · budget de performance vérifié en CI (Lighthouse CI, échec si Performance < 90 mobile).
+Sentry (erreurs, avec alerte email au-delà d'un seuil) · Vercel Analytics et Speed Insights · alerte si le cron carburant échoue 2 jours de suite · alerte si un webhook Stripe échoue · purge mensuelle des sessions statistiques via `/api/cron/purge-analytics` · surveillance de disponibilité externe (UptimeRobot) sur l'accueil et le tunnel · budget de performance vérifié en CI (Lighthouse CI, échec si Performance < 90 mobile).
 
 ### 4.5 Nom de domaine et emails
 

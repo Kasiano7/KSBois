@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatJoursLivraison, nomJour } from "@/lib/jours";
+import { formatJoursLivraison, nomJour, formatDateFr } from "@/lib/jours";
 
 describe("formatJoursLivraison", () => {
   it("regroupe une semaine complète plutôt que d'énumérer", () => {
@@ -35,6 +35,30 @@ describe("formatJoursLivraison", () => {
 
   it("retourne une chaîne vide sans jour", () => {
     expect(formatJoursLivraison([])).toBe("");
+  });
+});
+
+describe("formatDateFr", () => {
+  it("écrit « 1er » et non « 1 »", () => {
+    expect(formatDateFr("2026-09-01")).toBe("mardi 1er septembre");
+    expect(formatDateFr("2026-09-01", { jourSemaine: false })).toBe("1er septembre");
+  });
+
+  it("écrit les autres jours normalement", () => {
+    expect(formatDateFr("2026-09-08")).toBe("mardi 8 septembre");
+    expect(formatDateFr("2026-09-21", { jourSemaine: false })).toBe("21 septembre");
+  });
+
+  it("ajoute l'année à la demande", () => {
+    expect(formatDateFr("2026-10-13", { annee: true })).toBe("mardi 13 octobre 2026");
+  });
+
+  it("lit la date en UTC — une date seule ne doit pas reculer d'un jour", () => {
+    expect(formatDateFr("2026-01-01")).toBe("jeudi 1er janvier");
+  });
+
+  it("renvoie l'entrée telle quelle si elle est illisible", () => {
+    expect(formatDateFr("pas-une-date")).toBe("pas-une-date");
   });
 });
 

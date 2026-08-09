@@ -1,7 +1,9 @@
 import { Truck, Droplets, Wallet, MapPin } from "lucide-react";
-import { Configurateur } from "@/components/produit/configurateur";
+import { ChoixBois } from "@/components/produit/choix-bois";
+import { BandeauLivraison } from "@/components/produit/bandeau-livraison";
 import { getTenant } from "@/lib/tenant";
-import { getFeaturedProduct } from "@/server/catalogue";
+import { listProducts } from "@/server/catalogue";
+import { getContexteLivraison } from "@/server/livraison-contexte";
 
 export default async function Accueil() {
   const tenant = await getTenant();
@@ -19,7 +21,12 @@ export default async function Accueil() {
     );
   }
 
-  const produit = await getFeaturedProduct(tenant.id);
+  const [produits, contexteLivraison] = await Promise.all([
+    listProducts(tenant.id),
+    // Non nul seulement si le visiteur a déjà estimé sa livraison : le panneau
+    // de sélection affiche alors un total livraison comprise.
+    getContexteLivraison(tenant),
+  ]);
 
   const reassurance = [
     {
@@ -110,41 +117,47 @@ export default async function Accueil() {
       {/* ---------------------------------------------------------------
           CONFIGURATEUR — le cœur transactionnel
           --------------------------------------------------------------- */}
-      <main id="commander" className="mx-auto max-w-[1240px] px-5 py-16 sm:py-20">
-        <div className="grid gap-10 lg:grid-cols-[1fr_460px] lg:gap-16">
-          <div>
-            <p className="micro-label text-braise-texte">Notre bois de chauffage</p>
-            <h2 className="mt-2 text-[32px] sm:text-[42px]">Choisissez votre longueur</h2>
-            <p className="text-cendre prose-bois mt-4 text-[19px]">
-              Les bûches sont dessinées à l&apos;échelle réelle : celle de 50 cm fait exactement
-              deux fois la longueur de celle de 25 cm. Vous voyez tout de suite ce qui rentre dans
-              votre poêle.
-            </p>
+      <main id="commander" className="mx-auto max-w-[1240px] px-5 py-14 sm:py-16">
+        <div className="max-w-[68ch]">
+          <p className="micro-label text-braise-texte">Notre bois de chauffage</p>
+          <h2 className="mt-2 text-[30px] sm:text-[38px]">Composez votre commande</h2>
+          <p className="text-cendre mt-3 text-[19px]">
+            Les bûches sont dessinées à l&apos;échelle réelle : celle de 50 cm fait exactement deux
+            fois la longueur de celle de 25 cm.
+          </p>
+        </div>
 
-            <div className="border-aubier-bord mt-8 rounded-[8px] border border-dashed p-5">
-              <p className="micro-label text-cendre">Stère ou mètre cube apparent ?</p>
-              <p className="text-cendre mt-2.5 text-[15px] leading-relaxed">
-                Le stère n&apos;est plus une unité de mesure légale depuis 1977 : la vente se fait
-                en <strong className="text-encre">mètres cubes apparents</strong>. Pour du bois en
-                1 m, un stère équivaut à 1 m³ apparent. Recoupé plus court, le bois s&apos;empile
-                plus dense : 1 stère de 1 m donne environ 0,70 m³ apparent en 33 cm.
-                {tenant.pricingBasis === "map_delivered"
-                  ? " Nos prix s'entendent au m³ apparent de la longueur que vous recevez."
-                  : " Nos prix s'entendent au stère équivalent bois de 1 m."}
-              </p>
-            </div>
-          </div>
-
-          {produit ? (
-            <Configurateur product={produit} subtitle={produit.shortDescription ?? undefined} />
+        <div className="mt-8">
+          {produits.length > 0 ? (
+            <ChoixBois produits={produits} contexteLivraison={contexteLivraison} />
           ) : (
-            <div className="border-aubier-bord bg-aubier-pur rounded-[8px] border p-7">
+            <div className="border-aubier-bord bg-aubier-pur rounded-[10px] border p-7">
               <p className="text-cendre">
-                Aucun produit mis en avant. Ajoutez-en un depuis l&apos;administration.
+                Aucun produit actif. Ajoutez-en depuis l&apos;administration.
               </p>
             </div>
           )}
         </div>
+
+        <BandeauLivraison
+          region={`Livraison rapide en ${tenant.city ? `${tenant.city} et alentours` : "Ardèche et alentours"}.`}
+        />
+
+        {/* Encart pédagogique : replié visuellement pour ne pas alourdir */}
+        <details className="border-aubier-bord group mt-6 rounded-[10px] border border-dashed">
+          <summary className="text-cendre hover:text-encre flex cursor-pointer items-center gap-2 p-5 text-[15px] font-semibold">
+            Stère ou mètre cube apparent ?
+          </summary>
+          <p className="text-cendre prose-bois px-5 pb-5 text-[15px] leading-relaxed">
+            Le stère n&apos;est plus une unité de mesure légale depuis 1977 : la vente se fait en{" "}
+            <strong className="text-encre">mètres cubes apparents</strong>. Pour du bois en 1 m, un
+            stère équivaut à 1 m³ apparent. Recoupé plus court, le bois s&apos;empile plus dense :
+            1 stère de 1 m donne environ 0,70 m³ apparent en 33 cm.
+            {tenant.pricingBasis === "map_delivered"
+              ? " Nos prix s'entendent au m³ apparent de la longueur que vous recevez."
+              : " Nos prix s'entendent au stère équivalent bois de 1 m."}
+          </p>
+        </details>
       </main>
 
       {/* ---------------------------------------------------------------

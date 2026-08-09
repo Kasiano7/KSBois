@@ -39,7 +39,7 @@ Ces éléments bloquent le développement. À réclamer dès maintenant.
 - [ ] Environnement `staging` sur Supabase hébergé — nécessite un compte
 - [ ] Sentry et CI — non branchés
 
-**Reste à traiter avant le lot 1 :** shadcn/ui non installé (les composants ont été écrits à la main pour l'instant) · client ImageKit et composant `<Media />` non faits (compte ImageKit requis) · Zod installé mais pas encore utilisé · la dette de rendu dynamique de `docs/01` §4.3.
+**Reste à traiter :** client ImageKit et composant `<Media />` (compte ImageKit requis) · la dette de rendu dynamique de `docs/01` §4.3. *(shadcn/ui et Zod ont depuis été intégrés — voir lot 1.)*
 
 **Commandes utiles :**
 
@@ -74,21 +74,37 @@ npm run verify
 - **Authentification** : mot de passe et lien magique, rôles `owner`/`staff`/`driver`, `requireRole()` en première ligne de chaque écran et de chaque action, comptes de démonstration dans le seed
 - **Administration** : tableau de bord (chiffres du jour, points d'attention cliquables, activité du mois), liste des commandes avec filtres, fiche commande complète (confirmation de date, encaissement, transitions en libellés explicites, historique), **tournée du jour** avec mode de paiement et contraintes d'accès mis en évidence, liens Maps/Waze/Plans, itinéraire multi-étapes, impression, et « Marquer comme livrée » qui décrémente réellement le stock
 
+- **Écran stock** : ajout de production en deux gestes avec raccourcis, correction d'inventaire avec motif obligatoire, garde-fou contre une correction sous le volume déjà réservé, alertes de seuil, audit complet des mouvements avec auteur
+- **Écran zones de livraison** : grilles tarifaires éditables (forfait, supplément au m³, seuil de gratuité, minimum, jours de passage), tableau des communes avec affectation **en masse**, ajout de commune, signalement des incohérences (zone vide, distance manquante), et surtout le simulateur **« Tester une adresse »** qui reproduit le calcul client avec son détail — y compris l'alerte quand le plafond carburant rogne la facturation
+- **Emails transactionnels** : gabarit et deux modèles (confirmation de commande, livraison confirmée), service d'envoi journalisé dans `notifications_log`. Sans clé Resend, la notification est enregistrée en `queued` et le contenu affiché en console — **rien n'est perdu et l'interface le dit honnêtement à l'exploitant**
+
+- **Paiement Stripe** : Elements en français, `PaymentIntent` avec idempotence, webhook signé et idempotent, et une **vérification directe auprès de l'API Stripe** en second chemin. Testé de bout en bout avec la carte `4242…` : commande `nouvelle → payee → à préparer`, encaissement et charge enregistrés
+- **Envoi Resend opérationnel** : confirmation de commande et confirmation de livraison, journalisées `sent` avec identifiant fournisseur. Email de confirmation unifié dans `server/notifications-commande.ts`, construit depuis la COMMANDE (pas le panier) et idempotent
+- **Relevé automatique du carburant** : cron quotidien sur l'open data officiel `data.economie.gouv.fr`, médiane départementale après élimination des aberrants (Tukey), contrôle de sanité à 15 %, relevés refusés conservés et acceptables en un clic, saisie manuelle et relance immédiate
+
+- **Écran créneaux** (`/admin/livraison/creneaux`) : journées de livraison récurrentes créées et modifiables sans jargon (jour, horaires, libellé proposé automatiquement, capacités, véhicule, zones), refus des horaires qui se chevauchent, calendrier des huit prochaines semaines avec le remplissage des **deux** contraintes et la mention en clair de celle qui limite, ajustement de capacité date par date avec garde-fou contre un maximum inférieur au déjà réservé, fermeture d'une date avec motif, créneau exceptionnel hors modèle, périodes bloquées qui ferment réellement les créneaux existants et les rouvrent à l'annulation. Bandeau d'état de génération + **cron hebdomadaire** `/api/cron/generate-slots` : sans lui, l'horizon recule d'un jour par jour et le tunnel finit par ne plus proposer aucune date, sans aucun message d'erreur
+
+- **Écran devis** (`/admin/devis` et `/admin/devis/[id]`) : liste filtrée avec compteurs et signalement des demandes en souffrance, fiche en deux colonnes (la demande du client d'un côté — jamais modifiée —, la proposition chiffrée de l'autre), composition des lignes par format et quantité avec reprise du panier du visiteur en un clic, livraison calculée automatiquement **ou fixée à la main** quand la commune est hors zone, remise ventilée dans la TVA par le moteur de prix, durée de validité, devis PDF, envoi par email avec le PDF joint, notes internes, et **conversion en commande en un clic** (numérotation et réservation de stock par les mêmes fonctions que le tunnel client, double conversion bloquée). Accusé de réception au client et alerte interne à l'arrivée d'une demande
+
+- **Écran statistiques** (`/admin/statistiques`) : période globale et comparaison, origine web/téléphone/admin, prix réellement vendu au m³, tunnel complet et abandons, demande perdue chiffrée, autonomie et priorité de stock, performance des devis, coût réel des zones, délai commande → livraison, clients à réactiver, annulations/remboursements, promotions, devis PDF → commandes et SEO → CA. Instrumentation anonyme par sessions de 30 minutes, attribution figée sur les commandes et purge à 25 mois
+
 **⏳ Reste à faire sur le lot 1**
 
-- Stripe : PaymentIntent + webhook signé (la carte se masque proprement tant que les clés manquent)
+- Modèles d'email restants : rappel la veille, livraison effectuée avec facture, récap quotidien
+- **`STRIPE_WEBHOOK_SECRET` à obtenir** : le webhook est écrit, signé et idempotent, mais inactif sans son secret. En local : `stripe listen --forward-to localhost:3000/api/webhooks/stripe`. En production : créer le point de terminaison dans le tableau de bord Stripe. En attendant, le paiement aboutit par la **vérification directe** auprès de l'API Stripe après confirmation — pas par le navigateur
+- **Domaine à vérifier chez Resend** : sans domaine vérifié, `onboarding@resend.dev` ne peut écrire qu'au titulaire du compte. Aucun client réel ne recevra d'email avant cette étape (+ SPF/DKIM/DMARC)
 - Compte client (l'authentification existe, l'espace client reste à faire), recommande en 2 clics
-- Administration : **dashboard, liste et fiche commande, tournée du jour ✅ faits**. Restent stock, clients, devis, zones, créneaux et réglages — écrans actuellement en « chantier visible » plutôt qu'en lien mort
-- Notifications Resend, factures, bons de livraison
+- Administration : **dashboard, liste et fiche commande, tournée du jour, stock et tarifs, zones de livraison, créneaux, devis et statistiques ✅ faits**. Restent clients et réglages — écrans en « chantier visible » plutôt qu'en lien mort
+- Factures PDF et bons de livraison (le devis PDF sert de modèle : `src/pdf/devis.tsx`)
 - Pages contenu et SEO local, pages légales
 - ImageKit et composant `<Media />`
-- Cron carburant (`/api/cron/fuel-price`) — la lecture du prix et le repli fonctionnent, l'alimentation automatique reste à brancher
+- ~~Cron carburant~~ ✅ **fait** : relevé quotidien sur l'open data officiel (`data.economie.gouv.fr`), médiane départementale après élimination des valeurs aberrantes, contrôle de sanité à 15 %, relevés refusés conservés et acceptables en un clic, saisie manuelle et relance immédiate. `vercel.json` planifie le passage à 10 h heure de Paris
 
 **Dettes ouvertes**
 
 - Rendu dynamique de toutes les pages (`docs/01` §4.3) — bloquant pour l'objectif LCP
 - Limitation de débit en mémoire dans `actions/devis.ts` — insuffisante en serverless, à porter en base ou Upstash
-- Notification email du devis non branchée (attend le domaine et Resend)
+- ~~Notification email du devis non branchée~~ ✅ branchée (accusé de réception, alerte interne, devis avec PDF joint). **Elle échoue tant que le domaine Resend n'est pas vérifié** : l'interface le dit explicitement et invite à envoyer le PDF à la main. Vérifié le 9 août 2026 en conditions réelles — erreur 403 « you can only send testing emails to your own address », journalisée en `failed` dans `notifications_log`
 
 
 ### 1.1 Catalogue et fiche produit
@@ -142,7 +158,7 @@ Devis panier · facture · bon de livraison · feuille de tournée.
 
 - **SMS** (confirmation + rappel J-1) — le meilleur rapport valeur/effort du lot
 - **Optimisation automatique de tournée** (OSRM + 2-opt, proposition non imposée)
-- **Statistiques poussées** : carte de chaleur du CA par commune, taux de retour annuel, rentabilité par zone
+- **Carte de chaleur du CA par commune** et exports avancés — le pilotage ventes/tunnel/stock/devis/zones est déjà livré
 - **Simulateur « Combien de bois me faut-il ? »** — aimant SEO et outil de vente
 - **Avis Google** intégrés (API Places, cache quotidien)
 - **Promotions avancées** : offres saisonnières, remise première commande

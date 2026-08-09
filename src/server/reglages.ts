@@ -143,10 +143,13 @@ export const getDernierPrixCarburant = cache(
     companyId: string,
   ): Promise<{ pricePerLiterCents: number; recordedAt: string; source: string } | null> => {
     const supabase = createSupabaseAdminClient();
+    // Seuls les relevés APPLIQUÉS font foi : un relevé refusé par le contrôle de
+    // sanité est conservé pour information, pas pour facturer.
     const { data } = await supabase
       .from("fuel_prices")
       .select("price_per_liter_cents, recorded_at, source")
       .eq("company_id", companyId)
+      .eq("applied", true)
       .order("recorded_at", { ascending: false })
       .limit(1)
       .maybeSingle();

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   selectVehicle,
   computeFuelSurcharge,
+  computeFuelSurchargeDetail,
   computeDeliveryFee,
   checkZoneEligibility,
   roundUpTo,
@@ -121,6 +122,31 @@ describe("computeFuelSurcharge", () => {
 
   it("retourne zéro pour un retrait sur place", () => {
     expect(computeFuelSurcharge(0, camion, carburant)).toBe(0);
+  });
+});
+
+describe("computeFuelSurchargeDetail", () => {
+  it("signale explicitement le plafonnement", () => {
+    // 34 km × 2 × 28/100 = 19,04 L ; × 1,75 € = 33,32 € → rogné à 30,00 €.
+    const d = computeFuelSurchargeDetail(34, camion, carburant);
+    expect(d.rawCents).toBe(3_332);
+    expect(d.cents).toBe(3_000);
+    expect(d.capped).toBe(true);
+    expect(d.liters).toBe(19.04);
+  });
+
+  it("ne signale rien quand le plafond n'est pas atteint", () => {
+    const d = computeFuelSurchargeDetail(20, camion, carburant);
+    expect(d.capped).toBe(false);
+    expect(d.cents).toBe(d.rawCents);
+  });
+
+  it("reste cohérent avec computeFuelSurcharge", () => {
+    for (const km of [0, 5, 20, 34, 90]) {
+      expect(computeFuelSurchargeDetail(km, camion, carburant).cents).toBe(
+        computeFuelSurcharge(km, camion, carburant),
+      );
+    }
   });
 });
 

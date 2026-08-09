@@ -7,6 +7,7 @@ import type { Json } from "@/lib/supabase/database.types";
 import { requireTenant } from "@/lib/tenant";
 import { getPanier } from "@/server/panier";
 import { normaliserCodePostal } from "@/server/zones";
+import { envoyerAccuseDevis } from "@/server/notifications-devis";
 
 /**
  * Demande de devis — docs/02-MOTEURS-METIER.md §7.2
@@ -127,6 +128,9 @@ export async function envoyerDemandeDevis(entree: unknown): Promise<ResultatDevi
     if (panier.lignes.length > 0) {
       cartSnapshot = {
         lignes: panier.lignes.map((l) => ({
+          // L'identifiant de variante est indispensable : c'est lui qui permet
+          // de pré-remplir la proposition sans ressaisie (docs/02 §7.2).
+          variantId: l.variantId,
           produit: l.productName,
           format: l.variantLabel,
           quantite: l.quantity,
@@ -147,33 +151,38 @@ export async function envoyerDemandeDevis(entree: unknown): Promise<ResultatDevi
   }
 
   const d = parsed.data;
-  const { error } = await supabase.from("quote_requests").insert({
-    company_id: tenant.id,
-    reference,
-    first_name: d.firstName,
-    last_name: d.lastName,
-    company_name: d.companyName ?? null,
-    email: d.email,
-    phone: d.phone,
-    address_line1: d.addressLine1 ?? null,
-    postal_code: d.postalCode,
-    city: d.city,
-    species: d.species ?? null,
-    cut_length_cm: d.cutLengthCm ?? null,
-    quantity_m3: d.quantityM3 ?? null,
-    humidity_preference: d.humidityPreference ?? null,
-    message: d.message ?? null,
-    origin: origine,
-    cart_snapshot: cartSnapshot,
-  });
+  const { data: creee, error } = await supabase
+    .from("quote_requests")
+    .insert({
+      company_id: tenant.id,
+      reference,
+      first_name: d.firstName,
+      last_name: d.lastName,
+      company_name: d.companyName ?? null,
+      email: d.email,
+      phone: d.phone,
+      address_line1: d.addressLine1 ?? null,
+      postal_code: d.postalCode,
+      city: d.city,
+      species: d.species ?? null,
+      cut_length_cm: d.cutLengthCm ?? null,
+      quantity_m3: d.quantityM3 ?? null,
+      humidity_preference: d.humidityPreference ?? null,
+      message: d.message ?? null,
+      origin: origine,
+      cart_snapshot: cartSnapshot,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
-    console.error("[devis] enregistrement :", error.message);
+  if (error || !creee) {
+    console.error("[devis] enregistrement :", error?.message);
     return { ok: false, message: "Une erreur est survenue. Merci de nous appeler." };
   }
 
-  // TODO lot 1 : notification email au patron + accusé de réception au client
-  // (Resend). Non branché tant que le domaine n'est pas configuré.
+  // Accusé au client et alerte à l'entreprise. Un échec d'envoi ne remet jamais
+  // en cause la demande : elle est en base et visible dans l'administration.
+  await envoyerAccuseDevis(tenant, creee.id);
 
   return { ok: true, reference };
 }

@@ -3,6 +3,8 @@ import { requireTenant } from "@/lib/tenant";
 import { getPanier } from "@/server/panier";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { DevisPdf } from "@/pdf/devis";
+import { getCartId } from "@/server/panier";
+import { enregistrerEvenementAnalytics } from "@/server/analytics";
 
 /**
  * POST /api/pdf/devis — devis imprimable depuis le panier (docs/02 §7.1).
@@ -62,6 +64,13 @@ export async function POST() {
   );
 
   const nomFichier = `devis-bois-${reference}.pdf`;
+
+  await enregistrerEvenementAnalytics(tenant.id, {
+    type: "quote_pdf",
+    cartId: await getCartId(),
+    caPotentielCents: panier.totaux.totalCents,
+    volumePotentielM3: panier.totaux.totalVolumeM3,
+  });
 
   return new Response(new Uint8Array(buffer), {
     headers: {

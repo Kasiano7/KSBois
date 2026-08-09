@@ -186,17 +186,56 @@ Deux vues du même objet.
 
 Un bouton **« Tester une adresse »** est présent en haut : on saisit un code postal et un volume, l'écran affiche le résultat exact que verrait un client (zone, véhicule retenu, détail des frais, jours disponibles). C'est l'outil qui donne confiance à l'exploitant dans le système.
 
-### 6.2 `/admin/livraison/creneaux`
+### 6.2 `/admin/livraison/creneaux` — ✅ fait
 
 Gestion des modèles récurrents (jour, horaires, capacité en nombre **et** en volume, véhicule, zones concernées) et calendrier des 8 prochaines semaines avec le taux de remplissage de chaque créneau (`4/8 livraisons · 12/20 m³`).
 
 Clic sur un jour → fermer, modifier la capacité ponctuellement, ajouter un créneau exceptionnel. Bouton « Bloquer une période » pour les congés.
+
+**Décisions prises à l'implémentation** — à ne pas défaire sans raison :
+
+| Sujet | Choix retenu | Pourquoi |
+|---|---|---|
+| Vocabulaire | « Vos journées de livraison », jamais « modèle » ni « template » | L'exploitant règle ses jours de travail, pas des gabarits |
+| Modification d'un modèle | **Ne touche pas** aux dates déjà générées, et l'écran le dit | Une commande réservée ne doit pas voir sa capacité changer sous elle |
+| Chevauchement d'horaires | Refusé, avec le nom du créneau en conflit | La contrainte d'unicité en base ne rattrape que les doublons exacts : « 8h–12h » puis « 10h–14h » vendrait deux fois la même demi-journée |
+| Baisse de capacité | Refusée sous le déjà réservé, message chiffré | Sinon le créneau s'afficherait « complet » alors que des livraisons y sont engagées |
+| Désactiver une journée | Ferme les dates futures **encore vides**, laisse ouvertes celles qui portent des livraisons | Désactiver un jour de travail n'annule pas une livraison promise |
+| Bloquer une période | Ferme réellement les créneaux existants (`delivery_slots.closed_by_blackout_id`) et signale les livraisons déjà prévues à replanifier | Le moteur de disponibilité écarte les dates bloquées côté client, mais `book_slot()` ne regarde que `is_open` — et l'exploitant verrait ses congés encore ouverts dans son propre calendrier |
+| Annuler une fermeture | Rouvre **exactement** les créneaux que cette fermeture avait fermés | Un créneau fermé pour une autre raison (camion en révision) doit le rester |
+| Créneau exceptionnel | Sans `template_id` | La régénération ne doit ni l'écraser ni le recréer |
+| Contrainte affichée | Les deux jauges, avec **en gras celle qui limite** et une mention « complet en volume » / « en nombre de livraisons » | « 2/6 livraisons » sur un créneau à 17/18 m³ fait croire à tort qu'il reste de la place |
+| « Plus réservable » | État distinct de « complet » : le volume restant est inférieur à la commande minimum | Cas réel constaté à l'écran — 23,5/24 m³ s'affichait « ouvert » alors qu'aucun client ne pouvait plus réserver |
+
+**Bandeau de génération, en haut de l'écran.** La génération est idempotente mais ponctuelle : l'horizon recule d'un jour par jour écoulé. Le jour où plus rien n'est généré, le tunnel ne propose aucune date **sans lever la moindre erreur**. L'écran affiche donc jusqu'à quelle date les clients peuvent réserver, alerte quand l'horizon se rapproche, et offre un bouton « Générer les dates ». Le cron hebdomadaire `/api/cron/generate-slots` (lundi 4 h, `vercel.json`) fait le travail en temps normal.
 
 ### 6.3 `/admin/livraison/vehicules` et `/carburant`
 
 Voir `docs/02` §2.2 et §2.4. Le simulateur de frais de livraison est présent sur les deux écrans.
 
 ---
+
+## 6 bis. Devis `/admin/devis` — ✅ fait
+
+**Liste** : onglets avec compteurs (à traiter, envoyés, acceptés, refusés, toutes), colonnes référence · date · client · commune · ce qu'il demande · origine · montant proposé · statut. Une demande sans réponse depuis deux jours porte la mention « depuis 3 j » en `--alerte` : dans ce métier, un prospect qui attend a déjà appelé ailleurs.
+
+**Fiche** : la demande du client à gauche — telle qu'il l'a écrite, jamais modifiable —, la proposition chiffrée à droite. Sur téléphone, l'ordre devient demande → proposition → suivi, la proposition avant le suivi parce que c'est l'action principale.
+
+| Bloc | Contenu |
+|---|---|
+| Sa demande | Coordonnées cliquables (`tel:`, `mailto:` avec objet pré-rempli), adresse, volume/essence/longueur/séchage souhaités, message, origine |
+| Son panier | Ce que le visiteur avait dans son panier au moment de basculer en devis — l'intention d'achat la plus fiable disponible |
+| Ce que je propose | Lignes (format + quantité), bouton « Reprendre le panier du client », livraison automatique ou fixée à la main, remise motivée, date de validité, totaux **calculés par le serveur** |
+| Suivi | Statut libre (une demande se traite au téléphone, dans le désordre) et notes internes |
+
+**Actions :** enregistrer · voir le PDF · envoyer par email avec le PDF joint · convertir en commande.
+
+**Points de vigilance repris de l'implémentation :**
+
+- Les alertes bloquantes sont affichées **en clair, au-dessus des boutons** : stock insuffisant (avec les chiffres et la conséquence), commune hors zone, volume supérieur à la flotte, frais au-dessus du plafond.
+- Le total affiché, celui du PDF, celui de l'email et celui de la commande viennent tous de la même fonction `calculerProposition`. Il ne peut pas y avoir deux chiffres différents.
+- La conversion est confirmée en deux temps, avec le montant et le nom du client dans la phrase de confirmation.
+- Un devis déjà converti n'expose plus ni la conversion ni les autres statuts.
 
 ## 7. Clients `/admin/clients`
 
@@ -210,21 +249,29 @@ Actions : bloquer un client (motif obligatoire), fusionner deux fiches doublons,
 
 ## 8. Statistiques `/admin/statistiques`
 
-Demandé « poussées ». Filtre de période global (mois, trimestre, saison de chauffe, année, personnalisé) avec comparaison à la période précédente sur chaque indicateur.
+✅ **Fait.** Filtre global (30 jours, 90 jours, saison de chauffe, 12 mois, dates personnalisées) avec comparaison à la période précédente sur les indicateurs de synthèse.
 
-**Ventes** — CA TTC et HT · nombre de commandes · panier moyen · volume vendu en m³ · courbe journalière · répartition par mois.
+**Synthèse** — CA commandé TTC (commandes non annulées) · nombre de commandes · panier moyen · volume vendu · prix moyen réellement vendu au m³ après remise.
 
-**Produits** — classement par CA et par volume · répartition par longueur de coupe · par essence · par classe d'humidité · formats jamais vendus (candidats à la suppression).
+**Origine des ventes** — commandes et CA séparés entre `web`, `phone` et `admin`, avec taux d'automatisation du site en nombre et en valeur.
 
-**Livraison** — répartition par zone · CA par commune (**avec carte de chaleur** — c'est ce qui indique où tracter) · distance moyenne · frais de livraison encaissés vs coût carburant estimé · taux de remplissage des créneaux par jour de semaine.
+**Tunnel** — visiteurs (sessions anonymes) → panier → vérification de zone → créneau → paiement → commande. Chaque carte affiche le nombre arrivé, le nombre abandonné avant la suite et le taux de passage. La date de début réelle de collecte est toujours visible.
 
-**Clients** — nouveaux vs récurrents · **taux de retour annuel** (indicateur décisif dans ce métier) · délai moyen entre deux commandes · classement des meilleurs clients · répartition particuliers/professionnels.
+**Demande perdue** — hors zone, code postal inconnu, rupture, aucun créneau, paiement échoué ; nombre de blocages, m³ potentiels et CA potentiel, tous signalés comme estimations.
 
-**Paiement** — répartition par mode · montant encaissé en espèces sur la période · impayés en cours · délai moyen d'encaissement des virements.
+**Prix vendu** — globalement puis par essence, longueur, zone et mois. Livraison et options sont exclues ; la remise est ventilée au prorata des lignes.
 
-**Exports** — CSV pour chaque tableau, export comptable mensuel (commandes, factures, TVA ventilée) au format attendu par un expert-comptable.
+**Stock** — vitesse hebdomadaire, disponible, réservé, jours d'autonomie, date de rupture estimée et ordre de production (`urgent`, `à produire`, `à surveiller`, `stable`).
 
-Toutes les métriques sont calculées par des **vues SQL matérialisées** rafraîchies quotidiennement, pas par des agrégations à la volée. Les graphiques utilisent la palette du design system et respectent la règle « jamais la couleur seule » (libellés + valeurs affichées).
+**Devis** — reçus, envoyés, acceptés, refusés, conversion, montant gagné/perdu et délai moyen de réponse.
+
+**Livraison** — frais facturés vs carburant + coût kilométrique, marge par zone, données manquantes signalées, délai commande → livraison global et par zone.
+
+**Réactivation** — clients ayant au moins deux commandes et dont la prochaine commande estimée par leur rythme médian est proche.
+
+**Secondaire** — annulations, remboursements, CA accompagné par les promotions, devis PDF → commandes → CA et SEO → commandes → CA. La carte de chaleur géographique et les exports comptables restent un enrichissement ultérieur.
+
+Les chiffres sont agrégés côté serveur à partir des tables métier indexées. À l'échelle prévue (50 à 100 commandes par mois), cela garde des définitions lisibles et vérifiables. Une matérialisation ne sera ajoutée que lorsque le volume réel la justifiera ; elle ne doit jamais créer une seconde définition d'un indicateur.
 
 ---
 

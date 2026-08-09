@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { CreditCard, Banknote, FileText, Landmark, Smartphone, Loader2 } from "lucide-react";
 import { validerCommande } from "@/server/actions/commande";
+import { FormulaireCarte, type DonneesPaiement } from "./formulaire-carte";
 import { formatEuros } from "@/domain/units";
 import type { PaymentMethod } from "@/domain/payments";
 import { Button } from "@/components/ui/button";
@@ -53,12 +55,14 @@ export function ChoixPaiement({
     (o) => !o.available && o.reason !== null && o.reason !== "desactive" && RAISONS[o.reason],
   );
 
+  const router = useRouter();
   const [methode, setMethode] = useState<PaymentMethod | null>(
     disponibles[0]?.method ?? null,
   );
   const [cgv, setCgv] = useState(false);
   const [enCours, demarrer] = useTransition();
   const [erreur, setErreur] = useState<string | null>(null);
+  const [paiementCarte, setPaiementCarte] = useState<DonneesPaiement | null>(null);
 
   const choisie = options.find((o) => o.method === methode);
   const montantBouton =
@@ -68,10 +72,45 @@ export function ChoixPaiement({
     setErreur(null);
     demarrer(async () => {
       const resultat = await validerCommande({ paymentMethod: methode, cgvAccepted: cgv });
-      // En cas de succès, l'action redirige : on n'arrive ici qu'en erreur.
-      if (resultat && !resultat.ok) setErreur(resultat.message ?? "Une erreur est survenue.");
+
+      if (!resultat.ok) {
+        setErreur(resultat.message ?? "Une erreur est survenue.");
+        return;
+      }
+
+      // Carte : on reste sur la page et on affiche le formulaire Stripe. La
+      // commande existe déjà, le stock est réservé, il ne manque que
+      // l'encaissement.
+      if (resultat.paiement && resultat.redirection) {
+        setPaiementCarte({
+          clientSecret: resultat.paiement.clientSecret,
+          publishableKey: resultat.paiement.publishableKey,
+          montantCents: resultat.paiement.montantCents,
+          reference: resultat.redirection.split("/").pop()?.split("?")[0] ?? "",
+          redirection: resultat.redirection,
+        });
+        return;
+      }
+
+      if (resultat.redirection) router.push(resultat.redirection);
     });
   };
+
+  // Une fois l'intention créée, l'écran devient celui du paiement : revenir en
+  // arrière n'aurait pas de sens, la commande est déjà enregistrée.
+  if (paiementCarte) {
+    return (
+      <div className="mt-8">
+        <h2 className="text-[22px]">Réglez votre commande</h2>
+        <p className="text-cendre mt-2 text-[17px]">
+          Votre commande est enregistrée. Il ne reste que le paiement.
+        </p>
+        <div className="border-aubier-bord bg-aubier-pur mt-5 rounded-[8px] border p-5">
+          <FormulaireCarte donnees={paiementCarte} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-8">

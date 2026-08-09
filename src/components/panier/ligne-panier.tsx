@@ -55,7 +55,10 @@ export function LignePanier({ ligne, pas = 0.5 }: LignePanierProps) {
             .join(" · ")}
         </p>
         <p className="text-cendre mt-1 text-[15px]">
-          {formatVolume(ligne.lineVolumeM3)} · {formatStereHint(ligne.lineVolumeM3)}
+          {formatVolume(ligne.lineVolumeM3)}
+          {ligne.stackingCoefficient !== null && (
+            <> · {formatStereHint(ligne.lineVolumeM3, ligne.stackingCoefficient)}</>
+          )}
         </p>
 
         {ligne.trackStock && !ligne.allowBackorder && ligne.quantity > ligne.stockAvailable && (

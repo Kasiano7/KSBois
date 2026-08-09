@@ -1,14 +1,19 @@
 "use server";
 
 import { z } from "zod";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import { requireTenant } from "@/lib/tenant";
 import { getCartId, getPanier } from "@/server/panier";
-import { creneauAppartientAuTenant } from "@/server/creneaux";
+import { creneauAppartientAuTenant, formatDateCreneau } from "@/server/creneaux";
+import { envoyerConfirmationCommande } from "@/server/notifications-commande";
+import {
+  creerIntentionPaiement,
+  verifierEtAppliquerPaiement,
+  type IntentionPaiement,
+} from "@/server/paiement";
 import { getPaymentSettings } from "@/server/reglages";
 import { uuidLike } from "@/lib/validation";
 import {
@@ -18,6 +23,10 @@ import {
   type PaymentMethod,
 } from "@/domain/payments";
 import { initialStatus } from "@/domain/orders/state-machine";
+import {
+  enregistrerEvenementAnalytics,
+  getAttributionCommande,
+} from "@/server/analytics";
 
 /**
  * Server Actions du tunnel de commande — étapes 2 à 4.
@@ -31,6 +40,10 @@ export interface ResultatEtape {
   ok: boolean;
   message?: string;
   erreurs?: Record<string, string>;
+  /** Destination après succès. Le client navigue, l'action ne redirige pas. */
+  redirection?: string;
+  /** Renseigné pour un paiement par carte : à passer à Stripe Elements. */
+  paiement?: IntentionPaiement | null;
 }
 
 function erreursDeZod(erreur: z.ZodError): Record<string, string> {
@@ -186,7 +199,8 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
     .select(
       `email, phone, first_name, last_name, fulfillment_type, address_line1,
        address_line2, access_notes, truck_access, unload_type,
-       allow_unattended_delivery, slot_id, delivery_notes, postal_code, city`,
+       allow_unattended_delivery, slot_id, delivery_notes, postal_code, city,
+       delivery_slots ( date, label )`,
     )
     .eq("id", cartId)
     .eq("company_id", tenant.id)
@@ -225,6 +239,7 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
   }
 
   const acompte = evaluateDeposit(contexte);
+  const attribution = await getAttributionCommande(tenant.id);
 
   // --- Numérotation ---
   const { data: reference, error: erreurRef } = await supabase.rpc("next_document_number", {
@@ -237,6 +252,12 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
   }
 
   const devis = panier.livraison.devis;
+
+  // Libellé du créneau souhaité, figé sur la commande : le client doit retrouver
+  // dans l'email exactement ce qu'il a choisi.
+  const slot = brouillon.delivery_slots as unknown as { date: string; label: string } | null;
+  const creneauSouhaite = slot ? `${formatDateCreneau(slot.date)} · ${slot.label}` : null;
+
   const adresseSnapshot: Json = {
     line1: brouillon.address_line1,
     line2: brouillon.address_line2,
@@ -265,7 +286,7 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
         panier.livraison.resolution?.status === "ok" ? panier.livraison.resolution.zone.id : null,
       distance_km: panier.livraison.distanceKm,
       vehicle_id: panier.livraison.vehicule?.id ?? null,
-      requested_slot_label: null,
+      requested_slot_label: creneauSouhaite,
       delivery_notes: brouillon.delivery_notes,
       subtotal_cents: panier.totaux.subtotalCents,
       discount_cents: panier.totaux.discountCents,
@@ -284,6 +305,9 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
       cgv_accepted_at: new Date().toISOString(),
       fuel_price_snapshot_cents: panier.livraison.prixCarburantCents,
       source: "web",
+      analytics_session_id: attribution.sessionId,
+      acquisition_source: attribution.source,
+      quote_pdf_before_order: attribution.devisPdfAvantCommande,
     })
     .select("id, reference")
     .single();
@@ -360,6 +384,17 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
     note: "Commande passée depuis le site",
   });
 
+  await enregistrerEvenementAnalytics(tenant.id, {
+    type: "order",
+    sessionId: attribution.sessionId,
+    cartId,
+    orderId: commande.id,
+    zoneId:
+      panier.livraison.resolution?.status === "ok" ? panier.livraison.resolution.zone.id : null,
+    caPotentielCents: panier.totaux.totalCents,
+    volumePotentielM3: panier.totaux.totalVolumeM3,
+  });
+
   // --- Jeton d'accès invité : la référence seule est devinable ---
   const token = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
   const expire = new Date(Date.now() + 90 * 86_400_000).toISOString();
@@ -367,12 +402,96 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
     .from("order_access_tokens")
     .insert({ token, order_id: commande.id, expires_at: expire });
 
-  // --- Le panier a vécu ---
-  await supabase.from("cart_items").delete().eq("cart_id", cartId);
-  await supabase.from("carts").delete().eq("id", cartId);
-  (await cookies()).delete("panier_id");
+  // --- Intention de paiement, pour la carte uniquement ---
+  // Créée AVANT de vider le panier : si Stripe échoue, le client doit pouvoir
+  // repartir de son panier intact.
+  let paiement: IntentionPaiement | null = null;
+  if (methode === "card") {
+    try {
+      paiement = await creerIntentionPaiement(tenant.id, commande.id);
+    } catch (erreur) {
+      console.error("[commande] intention de paiement :", erreur);
+      await enregistrerEvenementAnalytics(tenant.id, {
+        type: "lost_demand",
+        sessionId: attribution.sessionId,
+        cartId,
+        orderId: commande.id,
+        motif: "payment_failed",
+        caPotentielCents: panier.totaux.totalCents,
+        volumePotentielM3: panier.totaux.totalVolumeM3,
+      });
+      await supabase.rpc("release_order_stock", { p_order_id: commande.id });
+      await supabase.rpc("release_slot", { p_order_id: commande.id });
+      await supabase.from("orders").delete().eq("id", commande.id);
+      return {
+        ok: false,
+        message: "Le paiement par carte est momentanément indisponible. Choisissez un autre mode.",
+      };
+    }
+  }
 
-  // TODO : email de confirmation (Resend) + PaymentIntent Stripe si methode === 'card'.
+  // --- Le panier a vécu… sauf en carte, où il reste jusqu'à l'encaissement ---
+  // Un paiement abandonné ne doit pas laisser le client sans panier.
+  if (methode !== "card") {
+    await supabase.from("cart_items").delete().eq("cart_id", cartId);
+    await supabase.from("carts").delete().eq("id", cartId);
+    (await cookies()).delete("panier_id");
+  }
 
-  redirect(`/commande/confirmation/${commande.reference}?jeton=${token}`);
+  const destination = `/commande/confirmation/${commande.reference}?jeton=${token}`;
+
+  // En carte, la confirmation par email attend l'encaissement : annoncer une
+  // commande confirmée avant que le paiement aboutisse serait mensonger. Elle
+  // est envoyée depuis `appliquerPaiementReussi`.
+  if (methode === "card") {
+    return { ok: true, redirection: destination, paiement };
+  }
+
+  // Modes différés : la commande est ferme dès maintenant, on confirme.
+  // Source unique de l'email, construite depuis la commande (pas depuis le
+  // panier) pour que les deux chemins ne divergent jamais.
+  await envoyerConfirmationCommande(commande.id);
+
+  return { ok: true, redirection: destination };
+}
+
+/**
+ * Confirme un paiement par carte après validation par Stripe Elements.
+ *
+ * ⚠️ On ne croit PAS le navigateur : cette action redemande l'état réel de
+ * l'intention à l'API Stripe. Elle sert de filet quand le webhook n'est pas
+ * configuré ou qu'il tarde ; le webhook reste le chemin principal.
+ */
+export async function confirmerPaiementCarte(entree: unknown): Promise<ResultatEtape> {
+  const parsed = z.object({ reference: z.string().trim().min(3).max(40) }).safeParse(entree);
+  if (!parsed.success) return { ok: false, message: "Requête invalide." };
+
+  const tenant = await requireTenant();
+  const supabase = createSupabaseAdminClient();
+
+  const { data: commande } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("company_id", tenant.id)
+    .eq("reference", parsed.data.reference)
+    .maybeSingle();
+
+  if (!commande) return { ok: false, message: "Commande introuvable." };
+
+  const resultat = await verifierEtAppliquerPaiement(tenant.id, commande.id);
+
+  if (!resultat.applique) {
+    return { ok: false, message: resultat.raison };
+  }
+
+  // Paiement encaissé : le panier peut enfin être vidé.
+  const cartId = await getCartId();
+  if (cartId) {
+    await supabase.from("cart_items").delete().eq("cart_id", cartId);
+    await supabase.from("carts").delete().eq("id", cartId);
+    (await cookies()).delete("panier_id");
+  }
+
+  revalidatePath("/");
+  return { ok: true };
 }

@@ -7,6 +7,7 @@ import {
   Users,
   MapPin,
   CalendarDays,
+  ChartNoAxesCombined,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -32,6 +33,7 @@ const NAVIGATION = [
   { href: "/admin/devis", libelle: "Devis", Icone: ClipboardList },
   { href: "/admin/livraison/zones", libelle: "Zones", Icone: MapPin },
   { href: "/admin/livraison/creneaux", libelle: "Créneaux", Icone: CalendarDays },
+  { href: "/admin/statistiques", libelle: "Statistiques", Icone: ChartNoAxesCombined },
   { href: "/admin/reglages", libelle: "Réglages", Icone: Settings },
 ];
 

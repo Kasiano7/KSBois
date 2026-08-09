@@ -19,7 +19,7 @@
 | Terminal physique | **SumUp** — hors ligne, saisi manuellement dans l'admin | Le boîtier est dans le camion, aucune intégration API en V1 |
 | Email | **Resend** + **React Email** | Templates typés, versionnés dans le repo |
 | PDF | **@react-pdf/renderer** exécuté côté serveur | Devis, factures, bons de livraison, feuille de tournée |
-| Cron | **Vercel Cron** → Route Handler protégé par secret | Prix carburant, génération de créneaux, récap quotidien |
+| Cron | **Vercel Cron** → Route Handler protégé par secret | Prix carburant, génération de créneaux, récap quotidien, purge des statistiques |
 | Validation | **Zod** — un schéma par frontière (form, action, API, webhook) | |
 | Tests | **Vitest** (unitaire, moteurs métier) + **Playwright** (E2E tunnel) | |
 | Observabilité | **Sentry** + Vercel Analytics | |
@@ -490,6 +490,10 @@ create table delivery_slots (
   zone_ids uuid[] default '{}',
   is_open boolean not null default true,
   closed_reason text,
+  -- Fermeture due à une période bloquée. Permet de rouvrir EXACTEMENT les
+  -- créneaux fermés par cette période, et pas ceux fermés pour une autre
+  -- raison (migration 20260809100000, voir docs/05 §6.2).
+  closed_by_blackout_id uuid references slot_blackouts(id) on delete set null,
   unique (company_id, date, start_time, end_time)
 );
 create index on delivery_slots (company_id, date);
@@ -629,7 +633,16 @@ create table quote_requests (
   origin text default 'form',                -- 'form' | 'out_of_zone' | 'large_order'
   cart_snapshot jsonb,                       -- si issu d'un panier hors zone
   estimated_total_cents integer, admin_notes text,
-  responded_at timestamptz, created_at timestamptz default now()
+  responded_at timestamptz, created_at timestamptz default now(),
+  -- Proposition commerciale (migration 20260809110000, voir docs/02 §7.2).
+  -- ⚠️ proposal_lines ne contient QUE des variantId + quantités : les prix sont
+  -- recalculés à chaque lecture, comme pour le panier.
+  proposal_lines jsonb not null default '[]',
+  delivery_included boolean not null default true,
+  delivery_cents integer,          -- null = calcul automatique (commune desservie)
+  discount_cents integer not null default 0, discount_label text,
+  valid_until date,
+  converted_order_id uuid references orders(id) on delete set null
 );
 
 create table promotions (
@@ -687,6 +700,19 @@ create table audit_log (
 ```
 
 **Tables à créer aussi (détaillées dans les docs suivants) :** `guides` (blog), `commune_pages` (SEO local), `reviews_cache` (avis Google), `carts` (panier serveur persistant).
+
+### 3.9 Mesure du parcours et attribution des ventes
+
+La migration `20260809120000_statistiques.sql` ajoute deux tables strictement dédiées à la mesure :
+
+| Table | Rôle | Données volontairement absentes |
+|---|---|---|
+| `analytics_sessions` | Une session anonyme de 30 minutes, sa source d'acquisition, sa page d'entrée et sa campagne éventuelle | IP, email, téléphone, adresse, identifiant publicitaire |
+| `analytics_events` | Première atteinte de chaque étape (`visit`, `cart`, `zone_check`, `slot`, `payment`, `order`, `quote_pdf`) et blocages (`lost_demand`) | Texte libre client, données de formulaire, URL complète du référent |
+
+Une session ne compte chaque étape du tunnel qu'une fois. Les blocages conservent, lorsqu'ils sont calculables côté serveur, le volume et le CA **potentiels** du panier ; ces montants sont toujours présentés comme des estimations, jamais comme du CA.
+
+Trois colonnes figent l'attribution sur `orders` : `analytics_session_id`, `acquisition_source` et `quote_pdf_before_order`. Ainsi, les statistiques SEO et « devis PDF → commande » survivent à la purge des événements. Les nouvelles tables ont RLS activée et forcée, ne sont jamais accessibles à `anon`, et ne sont écrites que par la route serveur validée.
 
 ---
 
@@ -749,6 +775,7 @@ $$;
 | `quote_requests` | INSERT seul (rate-limité) | ❌ | ALL | ALL |
 | `promotions` | ❌ — validation serveur uniquement | ❌ | SELECT | ALL |
 | `audit_log`, `notifications_log`, `fuel_prices` | ❌ | ❌ | SELECT | SELECT |
+| `analytics_sessions`, `analytics_events` | ❌ | ❌ | SELECT | SELECT |
 
 **Points de vigilance :**
 

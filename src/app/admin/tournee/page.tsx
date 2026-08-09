@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/auth";
 import { getTournee, lienTourneeComplete } from "@/server/tournee";
 import { aujourdHui } from "@/server/creneaux";
 import { addDays } from "@/domain/slots";
+import { formatDateFr } from "@/lib/jours";
 import { formatEuros, formatVolume } from "@/domain/units";
 import { ArretCarte } from "@/components/admin/arret-carte";
 import { Button } from "@/components/ui/button";
@@ -15,17 +16,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const formatDateLongue = new Intl.DateTimeFormat("fr-FR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
 function dateLisible(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return formatDateLongue.format(new Date(Date.UTC(y, m - 1, d)));
+  return formatDateFr(iso, { annee: true });
 }
 
 export default async function PageTournee({ searchParams }: PageProps<"/admin/tournee">) {

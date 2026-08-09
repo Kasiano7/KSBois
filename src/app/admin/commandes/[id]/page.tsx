@@ -113,21 +113,57 @@ export default async function PageCommande({ params }: PageProps<"/admin/command
                 <dt>Bois</dt>
                 <dd className="tabulaire">{formatEuros(commande.subtotal_cents)}</dd>
               </div>
-              {commande.delivery_base_cents > 0 && (
+              {commande.discount_cents > 0 && (
                 <div className="text-cendre-clair flex justify-between gap-3">
-                  <dt>Livraison — forfait</dt>
-                  <dd className="tabulaire">{formatEuros(commande.delivery_base_cents)}</dd>
+                  <dt>Remise</dt>
+                  <dd className="tabulaire">−{formatEuros(commande.discount_cents)}</dd>
                 </div>
               )}
-              {commande.delivery_fuel_cents > 0 && (
+
+              {/* Le détail n'est affiché que s'il RECONSTITUE le total des frais.
+                  Une livraison fixée à la main (devis hors zone) n'a ni forfait
+                  ni part carburant : n'afficher que ces deux lignes laisserait
+                  un écart inexpliqué entre le sous-total et le total. */}
+              {commande.delivery_base_cents +
+                commande.delivery_volume_cents +
+                commande.delivery_fuel_cents ===
+              commande.delivery_total_cents ? (
+                <>
+                  {commande.delivery_base_cents > 0 && (
+                    <div className="text-cendre-clair flex justify-between gap-3">
+                      <dt>Livraison — forfait</dt>
+                      <dd className="tabulaire">{formatEuros(commande.delivery_base_cents)}</dd>
+                    </div>
+                  )}
+                  {commande.delivery_volume_cents > 0 && (
+                    <div className="text-cendre-clair flex justify-between gap-3">
+                      <dt>Livraison — part volume</dt>
+                      <dd className="tabulaire">{formatEuros(commande.delivery_volume_cents)}</dd>
+                    </div>
+                  )}
+                  {commande.delivery_fuel_cents > 0 && (
+                    <div className="text-cendre-clair flex justify-between gap-3">
+                      <dt>
+                        Livraison — carburant
+                        {commande.fuel_price_snapshot_cents
+                          ? ` (gazole à ${(commande.fuel_price_snapshot_cents / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €/L)`
+                          : ""}
+                      </dt>
+                      <dd className="tabulaire">{formatEuros(commande.delivery_fuel_cents)}</dd>
+                    </div>
+                  )}
+                </>
+              ) : (
                 <div className="text-cendre-clair flex justify-between gap-3">
-                  <dt>
-                    Livraison — carburant
-                    {commande.fuel_price_snapshot_cents
-                      ? ` (gazole à ${(commande.fuel_price_snapshot_cents / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €/L)`
-                      : ""}
-                  </dt>
-                  <dd className="tabulaire">{formatEuros(commande.delivery_fuel_cents)}</dd>
+                  <dt>Livraison</dt>
+                  <dd className="tabulaire">{formatEuros(commande.delivery_total_cents)}</dd>
+                </div>
+              )}
+
+              {commande.delivery_offered_cents > 0 && (
+                <div className="text-cendre-clair flex justify-between gap-3">
+                  <dt>Livraison offerte</dt>
+                  <dd className="tabulaire">−{formatEuros(commande.delivery_offered_cents)}</dd>
                 </div>
               )}
               <div className="border-ecorce-bord flex justify-between gap-3 border-t pt-2.5 text-[19px] font-semibold">

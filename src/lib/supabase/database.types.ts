@@ -99,6 +99,148 @@ export type Database = {
           },
         ]
       }
+      analytics_events: {
+        Row: {
+          cart_id: string | null
+          company_id: string
+          event_type: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          order_id: string | null
+          potential_revenue_cents: number | null
+          potential_volume_m3: number | null
+          quote_request_id: string | null
+          reason: string | null
+          session_id: string
+          variant_id: string | null
+          zone_id: string | null
+        }
+        Insert: {
+          cart_id?: string | null
+          company_id: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          order_id?: string | null
+          potential_revenue_cents?: number | null
+          potential_volume_m3?: number | null
+          quote_request_id?: string | null
+          reason?: string | null
+          session_id: string
+          variant_id?: string | null
+          zone_id?: string | null
+        }
+        Update: {
+          cart_id?: string | null
+          company_id?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          order_id?: string | null
+          potential_revenue_cents?: number | null
+          potential_volume_m3?: number | null
+          quote_request_id?: string | null
+          reason?: string | null
+          session_id?: string
+          variant_id?: string | null
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_quote_request_id_fkey"
+            columns: ["quote_request_id"]
+            isOneToOne: false
+            referencedRelation: "quote_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_sessions: {
+        Row: {
+          acquisition_source: string
+          campaign: string | null
+          company_id: string
+          id: string
+          landing_path: string | null
+          last_seen_at: string
+          referrer_host: string | null
+          started_at: string
+        }
+        Insert: {
+          acquisition_source?: string
+          campaign?: string | null
+          company_id: string
+          id?: string
+          landing_path?: string | null
+          last_seen_at?: string
+          referrer_host?: string | null
+          started_at?: string
+        }
+        Update: {
+          acquisition_source?: string
+          campaign?: string | null
+          company_id?: string
+          id?: string
+          landing_path?: string | null
+          last_seen_at?: string
+          referrer_host?: string | null
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_sessions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -714,6 +856,7 @@ export type Database = {
         Row: {
           booked_deliveries: number
           booked_volume_m3: number
+          closed_by_blackout_id: string | null
           closed_reason: string | null
           company_id: string
           date: string
@@ -731,6 +874,7 @@ export type Database = {
         Insert: {
           booked_deliveries?: number
           booked_volume_m3?: number
+          closed_by_blackout_id?: string | null
           closed_reason?: string | null
           company_id: string
           date: string
@@ -748,6 +892,7 @@ export type Database = {
         Update: {
           booked_deliveries?: number
           booked_volume_m3?: number
+          closed_by_blackout_id?: string | null
           closed_reason?: string | null
           company_id?: string
           date?: string
@@ -763,6 +908,13 @@ export type Database = {
           zone_ids?: string[]
         }
         Relationships: [
+          {
+            foreignKeyName: "delivery_slots_closed_by_blackout_id_fkey"
+            columns: ["closed_by_blackout_id"]
+            isOneToOne: false
+            referencedRelation: "slot_blackouts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "delivery_slots_company_id_fkey"
             columns: ["company_id"]
@@ -879,32 +1031,38 @@ export type Database = {
       }
       fuel_prices: {
         Row: {
+          applied: boolean
           company_id: string
           department: string | null
           fuel_type: string
           id: string
           price_per_liter_cents: number
           recorded_at: string
+          rejected_reason: string | null
           sample_size: number | null
           source: string
         }
         Insert: {
+          applied?: boolean
           company_id: string
           department?: string | null
           fuel_type?: string
           id?: string
           price_per_liter_cents: number
           recorded_at?: string
+          rejected_reason?: string | null
           sample_size?: number | null
           source: string
         }
         Update: {
+          applied?: boolean
           company_id?: string
           department?: string | null
           fuel_type?: string
           id?: string
           price_per_liter_cents?: number
           recorded_at?: string
+          rejected_reason?: string | null
           sample_size?: number | null
           source?: string
         }
@@ -1358,7 +1516,9 @@ export type Database = {
       }
       orders: {
         Row: {
+          acquisition_source: string | null
           amount_paid_cents: number
+          analytics_session_id: string | null
           cgv_accepted_at: string | null
           cgv_version: string | null
           company_id: string
@@ -1393,6 +1553,7 @@ export type Database = {
           promotion_id: string | null
           reference: string
           requested_slot_label: string | null
+          quote_pdf_before_order: boolean
           route_position: number | null
           shipping_address: Json | null
           slot_id: string | null
@@ -1407,7 +1568,9 @@ export type Database = {
           zone_id: string | null
         }
         Insert: {
+          acquisition_source?: string | null
           amount_paid_cents?: number
+          analytics_session_id?: string | null
           cgv_accepted_at?: string | null
           cgv_version?: string | null
           company_id: string
@@ -1442,6 +1605,7 @@ export type Database = {
           promotion_id?: string | null
           reference: string
           requested_slot_label?: string | null
+          quote_pdf_before_order?: boolean
           route_position?: number | null
           shipping_address?: Json | null
           slot_id?: string | null
@@ -1456,7 +1620,9 @@ export type Database = {
           zone_id?: string | null
         }
         Update: {
+          acquisition_source?: string | null
           amount_paid_cents?: number
+          analytics_session_id?: string | null
           cgv_accepted_at?: string | null
           cgv_version?: string | null
           company_id?: string
@@ -1491,6 +1657,7 @@ export type Database = {
           promotion_id?: string | null
           reference?: string
           requested_slot_label?: string | null
+          quote_pdf_before_order?: boolean
           route_position?: number | null
           shipping_address?: Json | null
           slot_id?: string | null
@@ -1505,6 +1672,13 @@ export type Database = {
           zone_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_analytics_session_id_fkey"
+            columns: ["analytics_session_id"]
+            isOneToOne: false
+            referencedRelation: "analytics_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_company_id_fkey"
             columns: ["company_id"]
@@ -2132,8 +2306,13 @@ export type Database = {
           city: string | null
           company_id: string
           company_name: string | null
+          converted_order_id: string | null
           created_at: string
           cut_length_cm: number | null
+          delivery_cents: number | null
+          delivery_included: boolean
+          discount_cents: number
+          discount_label: string | null
           email: string
           estimated_total_cents: number | null
           first_name: string | null
@@ -2144,11 +2323,13 @@ export type Database = {
           origin: string
           phone: string | null
           postal_code: string | null
+          proposal_lines: Json
           quantity_m3: number | null
           reference: string
           responded_at: string | null
           species: string | null
           status: string
+          valid_until: string | null
         }
         Insert: {
           address_line1?: string | null
@@ -2157,8 +2338,13 @@ export type Database = {
           city?: string | null
           company_id: string
           company_name?: string | null
+          converted_order_id?: string | null
           created_at?: string
           cut_length_cm?: number | null
+          delivery_cents?: number | null
+          delivery_included?: boolean
+          discount_cents?: number
+          discount_label?: string | null
           email: string
           estimated_total_cents?: number | null
           first_name?: string | null
@@ -2169,11 +2355,13 @@ export type Database = {
           origin?: string
           phone?: string | null
           postal_code?: string | null
+          proposal_lines?: Json
           quantity_m3?: number | null
           reference: string
           responded_at?: string | null
           species?: string | null
           status?: string
+          valid_until?: string | null
         }
         Update: {
           address_line1?: string | null
@@ -2182,8 +2370,13 @@ export type Database = {
           city?: string | null
           company_id?: string
           company_name?: string | null
+          converted_order_id?: string | null
           created_at?: string
           cut_length_cm?: number | null
+          delivery_cents?: number | null
+          delivery_included?: boolean
+          discount_cents?: number
+          discount_label?: string | null
           email?: string
           estimated_total_cents?: number | null
           first_name?: string | null
@@ -2194,11 +2387,13 @@ export type Database = {
           origin?: string
           phone?: string | null
           postal_code?: string | null
+          proposal_lines?: Json
           quantity_m3?: number | null
           reference?: string
           responded_at?: string | null
           species?: string | null
           status?: string
+          valid_until?: string | null
         }
         Relationships: [
           {
@@ -2206,6 +2401,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_requests_converted_order_id_fkey"
+            columns: ["converted_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -2737,4 +2939,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

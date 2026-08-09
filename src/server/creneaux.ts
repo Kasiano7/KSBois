@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { availableSlots, type Blackout, type Slot, type SlotAvailability } from "@/domain/slots";
+import { formatDateFr } from "@/lib/jours";
 import { getOrderSettings } from "./reglages";
 
 /**
@@ -99,17 +100,9 @@ export function grouperParDate(
   return [...parDate.entries()].map(([date, liste]) => ({ date, creneaux: liste }));
 }
 
-const formatDateLongue = new Intl.DateTimeFormat("fr-FR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  timeZone: "UTC",
-});
-
 /** « mardi 13 octobre » — la liste de dates bat le calendrier mensuel (docs/02 §3.3). */
 export function formatDateCreneau(dateIso: string): string {
-  const [y, m, d] = dateIso.split("-").map(Number);
-  return formatDateLongue.format(new Date(Date.UTC(y, m - 1, d)));
+  return formatDateFr(dateIso);
 }
 
 /** Vérifie qu'un créneau appartient bien à l'entreprise avant réservation. */

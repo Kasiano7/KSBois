@@ -48,13 +48,21 @@ export function ActionsCommande({
 
   const resteAPayer = Math.max(0, totalCents - dejaPayeCents);
 
-  const lancer = (fn: () => Promise<{ ok: boolean; message?: string }>, succes: string) => {
+  /**
+   * `succes` reçoit le résultat pour pouvoir dire la VÉRITÉ sur la notification :
+   * « le client a été prévenu par email » n'est affiché que si l'email est
+   * réellement parti. Sinon on annonce qu'il est en attente d'envoi.
+   */
+  const lancer = (
+    fn: () => Promise<{ ok: boolean; message?: string; emailEnvoye?: boolean }>,
+    succes: (r: { emailEnvoye?: boolean }) => string,
+  ) => {
     setMessage(null);
     demarrer(async () => {
       const r = await fn();
       setMessage(
         r.ok
-          ? { ton: "ok", texte: succes }
+          ? { ton: "ok", texte: succes(r) }
           : { ton: "erreur", texte: r.message ?? "Une erreur est survenue." },
       );
     });
@@ -115,7 +123,10 @@ export function ActionsCommande({
           onClick={() =>
             lancer(
               () => confirmerLivraison({ orderId, date, creneau }),
-              "Livraison confirmée. Le client sera prévenu dès que les emails seront branchés.",
+              (r) =>
+                r.emailEnvoye
+                  ? "Livraison confirmée. Le client a reçu un email avec la date."
+                  : "Livraison confirmée. ⚠️ L'email n'a pas pu partir (envoi non configuré) — prévenez le client par téléphone.",
             )
           }
         >
@@ -148,7 +159,7 @@ export function ActionsCommande({
                     method: modePaiement ?? "cash",
                     amountCents: resteAPayer,
                   }),
-                `Paiement de ${formatEuros(resteAPayer)} enregistré.`,
+                () => `Paiement de ${formatEuros(resteAPayer)} enregistré.`,
               )
             }
           >
@@ -181,7 +192,7 @@ export function ActionsCommande({
                 onClick={() =>
                   lancer(
                     () => changerStatutCommande({ orderId, nouveauStatut: cible }),
-                    `Commande passée en « ${ORDER_STATUS_LABELS[cible]} ».`,
+                    () => `Commande passée en « ${ORDER_STATUS_LABELS[cible]} ».`,
                   )
                 }
               >
