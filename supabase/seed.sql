@@ -182,11 +182,11 @@ insert into auth.users (
   confirmation_token, recovery_token, email_change, email_change_token_new
 ) values
   ('a0000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000',
-   'authenticated','authenticated','patron@demo.local', crypt('demo1234', gen_salt('bf')),
+   'authenticated','authenticated','patron@demo.local', extensions.crypt('demo1234', extensions.gen_salt('bf')),
    now(), now(), now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
    '', '', '', ''),
   ('a0000000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000',
-   'authenticated','authenticated','secretariat@demo.local', crypt('demo1234', gen_salt('bf')),
+   'authenticated','authenticated','secretariat@demo.local', extensions.crypt('demo1234', extensions.gen_salt('bf')),
    now(), now(), now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
    '', '', '', '');
 
