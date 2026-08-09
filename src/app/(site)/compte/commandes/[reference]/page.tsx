@@ -54,7 +54,7 @@ export default async function PageCommandeClient({
         {ORDER_STATUS_LABELS[commande.statut]}
       </p>
 
-      <section className="border-aubier-bord bg-aubier-pur mt-7 rounded-[8px] border p-5 sm:p-6">
+      <section className="border-aubier-bord bg-aubier-pur mt-7 rounded-[14px] border p-5 sm:p-6">
         <h2 className="text-[21px] font-semibold">Votre livraison</h2>
         <p className="mt-2 text-[19px] leading-relaxed">{phraseLivraison(commande)}</p>
         {(commande.adresse || commande.ville) && (

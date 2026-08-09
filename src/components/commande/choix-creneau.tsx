@@ -103,7 +103,7 @@ export function ChoixCreneau({
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
         <Button
           type="button"
-          variant="cta"
+          variant="or"
           size="cta"
           disabled={enCours || !choix}
           onClick={() => valider(choix)}

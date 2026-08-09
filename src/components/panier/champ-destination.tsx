@@ -40,7 +40,7 @@ export function ChampDestination({ codePostalInitial, villeInitiale }: ChampDest
   };
 
   return (
-    <div className="border-aubier-bord bg-aubier-pur rounded-[8px] border p-5">
+    <div className="border-aubier-bord bg-aubier-pur rounded-[14px] border p-5">
       <form
         onSubmit={(e) => {
           e.preventDefault();

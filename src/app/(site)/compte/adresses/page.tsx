@@ -86,7 +86,7 @@ export default async function PageAdresses() {
           <p className="text-cendre mt-2 text-[17px] leading-relaxed">
             Elle apparaîtra ici après votre première livraison.
           </p>
-          <Button asChild variant="cta" size="lg" className="mt-5">
+          <Button asChild variant="or" size="lg" className="mt-5">
             <Link href="/#commander">Commander mon bois</Link>
           </Button>
         </div>
@@ -95,7 +95,7 @@ export default async function PageAdresses() {
           {adresses.map((a) => (
             <li
               key={a.cle}
-              className="border-aubier-bord bg-aubier-pur rounded-[8px] border p-5 text-[17px]"
+              className="border-aubier-bord bg-aubier-pur rounded-[14px] border p-5 text-[17px]"
             >
               <p className="flex items-start gap-2.5 font-semibold">
                 <MapPin

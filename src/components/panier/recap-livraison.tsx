@@ -151,7 +151,7 @@ export function RecapLivraison({ livraison }: { livraison: LivraisonResume }) {
   const jours = formatJoursLivraison(joursLivraison ?? []);
 
   return (
-    <div className="border-aubier-bord bg-aubier-pur rounded-[8px] border p-5">
+    <div className="border-aubier-bord bg-aubier-pur rounded-[14px] border p-5">
       <p className="flex flex-wrap items-center gap-x-2 font-semibold">
         <Truck size={20} strokeWidth={1.75} className="text-sapin" aria-hidden="true" />
         Livraison à {commune.city}

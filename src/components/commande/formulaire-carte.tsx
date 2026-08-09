@@ -124,7 +124,7 @@ function Champs({ donnees }: { donnees: DonneesPaiement }) {
 
       <Button
         type="submit"
-        variant="cta"
+        variant="or"
         size="cta"
         disabled={enCours || !stripe}
         className="mt-6 w-full"

@@ -82,7 +82,7 @@ export function ConnexionClient({ suite }: { suite?: string }) {
         </p>
       )}
 
-      <Button type="submit" variant="cta" size="cta" className="mt-5 w-full" disabled={enCours}>
+      <Button type="submit" variant="or" size="cta" className="mt-5 w-full" disabled={enCours}>
         {enCours ? (
           <Loader2 className="animate-spin" aria-hidden="true" />
         ) : (

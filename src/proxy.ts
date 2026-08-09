@@ -25,7 +25,18 @@ function pageDeConnexion(chemin: string): string {
   return chemin.startsWith("/compte") ? "/compte/connexion" : "/connexion";
 }
 
+/**
+ * Chemin demandé, exposé aux layouts serveur.
+ *
+ * Next ne donne pas le pathname à un layout : sans cet en-tête, le layout du
+ * site ne pourrait pas savoir s'il rend l'accueil (en-tête en surimpression de
+ * la photo) ou une page intérieure (barre pleine). C'est le seul moyen propre
+ * d'éviter de dupliquer le layout dans deux groupes de routes.
+ */
+export const EN_TETE_CHEMIN = "x-chemin";
+
 export async function proxy(request: NextRequest) {
+  request.headers.set(EN_TETE_CHEMIN, request.nextUrl.pathname);
   let response = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

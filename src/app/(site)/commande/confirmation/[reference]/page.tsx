@@ -94,7 +94,7 @@ export default async function PageConfirmation({ params, searchParams }: PagePro
         </p>
       </div>
 
-      <section className="border-aubier-bord bg-aubier-pur mt-8 rounded-[8px] border p-5">
+      <section className="border-aubier-bord bg-aubier-pur mt-8 rounded-[14px] border p-5">
         <h2 className="text-[19px] font-semibold">Votre commande</h2>
         <ul className="divide-aubier-bord mt-4 divide-y">
           {lignes.map((l, i) => (
@@ -155,13 +155,13 @@ export default async function PageConfirmation({ params, searchParams }: PagePro
       {/* Création du compte proposée ICI : c'est le moment exact où le client
           est satisfait, et c'est là qu'un acheteur invité devient un client
           fidèle qui recommandera en deux clics l'hiver prochain (docs/02 §9.2). */}
-      <section className="border-aubier-bord bg-aubier-pur mt-10 rounded-[8px] border p-5 sm:p-6">
+      <section className="border-aubier-bord bg-aubier-pur mt-10 rounded-[14px] border p-5 sm:p-6">
         <h2 className="text-[21px] font-semibold">Gardez cette commande sous la main</h2>
         <p className="text-cendre mt-2 max-w-[62ch] text-[17px] leading-relaxed">
           Créez votre espace en un clic, sans mot de passe : vous y retrouverez cette commande et
           vous pourrez commander le même bois en deux clics l&apos;an prochain.
         </p>
-        <Button asChild variant="cta" size="lg" className="mt-5">
+        <Button asChild variant="or" size="lg" className="mt-5">
           <Link href="/compte/connexion">Créer mon espace</Link>
         </Button>
         <p className="text-cendre mt-3 text-[15px]">

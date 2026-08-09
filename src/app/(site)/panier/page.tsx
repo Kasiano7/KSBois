@@ -26,7 +26,7 @@ export default async function PagePanier() {
           Choisissez une longueur de bûches et une quantité, nous calculons la livraison jusque chez
           vous.
         </p>
-        <Button asChild variant="cta" size="cta" className="mt-8">
+        <Button asChild variant="or" size="cta" className="mt-8">
           <Link href="/#commander">Voir le bois de chauffage</Link>
         </Button>
       </main>
@@ -88,7 +88,7 @@ export default async function PagePanier() {
         <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
           <RecapLivraison livraison={panier.livraison} />
 
-          <div className="border-aubier-bord bg-aubier-pur rounded-[8px] border p-5">
+          <div className="border-aubier-bord bg-aubier-pur rounded-[14px] border p-5">
             <dl className="space-y-2 text-[15px]">
               <div className="flex justify-between gap-3">
                 <dt className="text-cendre">Bois</dt>
@@ -132,7 +132,7 @@ export default async function PagePanier() {
 
             <Button
               asChild={peutCommander}
-              variant="cta"
+              variant="or"
               size="cta"
               disabled={!peutCommander}
               className="mt-5 w-full"

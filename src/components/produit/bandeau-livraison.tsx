@@ -34,7 +34,7 @@ export function BandeauLivraison({ region }: { region: string }) {
   };
 
   return (
-    <section className="border-aubier-bord bg-aubier-pur mt-6 rounded-[10px] border p-6 sm:p-7">
+    <section className="border-aubier-bord bg-aubier-pur rounded-[14px] border p-6 sm:p-7">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -42,8 +42,10 @@ export function BandeauLivraison({ region }: { region: string }) {
         }}
         className="flex flex-wrap items-end justify-between gap-x-8 gap-y-5"
       >
-        <div className="flex items-start gap-4">
-          <Truck size={26} strokeWidth={1.6} className="text-sapin mt-1 shrink-0" aria-hidden="true" />
+        <div className="flex items-center gap-4">
+          <span className="border-aubier-bord flex size-12 shrink-0 items-center justify-center rounded-full border">
+            <Truck size={24} strokeWidth={1.6} className="text-sapin" aria-hidden="true" />
+          </span>
           <div>
             <p className="text-[19px] font-semibold">Estimez votre livraison</p>
             <p className="text-cendre mt-1 text-[15px]">{region}</p>
@@ -69,7 +71,12 @@ export function BandeauLivraison({ region }: { region: string }) {
               className="tabulaire mt-1.5 w-32"
             />
           </div>
-          <Button type="submit" variant="default" size="lg" disabled={enCours || codePostal.length < 5}>
+          <Button
+            type="submit"
+            variant="default"
+            size="lg"
+            disabled={enCours || codePostal.length < 5}
+          >
             {enCours ? (
               <>
                 <Loader2 className="animate-spin" aria-hidden="true" />
@@ -132,12 +139,14 @@ function Reponse({
             <>Livraison offerte dans votre commune.</>
           ) : (
             <>
-              Livraison <strong className="text-encre">à partir de {formatEuros(resultat.fraisCents)}</strong>{" "}
-              pour {formatVolume(resultat.volumeReference)} — le montant exact dépend de la quantité.
+              Livraison{" "}
+              <strong className="text-encre">à partir de {formatEuros(resultat.fraisCents)}</strong>{" "}
+              pour {formatVolume(resultat.volumeReference)} — le montant exact dépend de la
+              quantité.
             </>
           )}
-          {resultat.jours && <> Nous passons {resultat.jours}.</>} Comptez {resultat.delaiJours} jours
-          de préparation.
+          {resultat.jours && <> Nous passons {resultat.jours}.</>} Comptez {resultat.delaiJours}{" "}
+          jours de préparation.
           {resultat.minimumVolumeM3 > 1 && (
             <> Commande minimum : {formatVolume(resultat.minimumVolumeM3)}.</>
           )}

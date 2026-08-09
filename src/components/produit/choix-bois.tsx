@@ -10,7 +10,6 @@ import { formatEuros, formatStereHint, validateQuantity } from "@/domain/units";
 import type { CatalogueProduct, CatalogueVariant } from "@/server/catalogue";
 import type { ContexteLivraison } from "@/server/livraison-contexte";
 import { BucheIllustration } from "./buche-illustration";
-import { PileIllustration } from "./pile-illustration";
 import { PanneauSelection } from "./panneau-selection";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -82,8 +81,7 @@ export function ChoixBois({
   const maxCmVignette = Math.max(...vignettes.map((l) => l.cm), 1);
 
   const [cm, setCm] = useState(
-    () =>
-      (vignettes.some((l) => l.cm === 33) ? 33 : vignettes[0]?.cm) ?? longueurs[0]?.cm ?? 33,
+    () => (vignettes.some((l) => l.cm === 33) ? 33 : vignettes[0]?.cm) ?? longueurs[0]?.cm ?? 33,
   );
   const [produitId, setProduitId] = useState(() => produits[0]?.id ?? "");
   const [quantite, setQuantite] = useState(1);
@@ -201,20 +199,78 @@ export function ChoixBois({
        reste sous les yeux pendant qu'il choisit. */
     <div className="border-aubier-bord bg-aubier-pur grid items-stretch overflow-hidden rounded-[14px] border shadow-[0_18px_50px_-28px_rgba(20,16,13,0.55)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_340px]">
       {/* ═══════════ 1. Longueur ═══════════ */}
-      <fieldset className="border-aubier-bord border-b p-5 sm:p-7 lg:border-r lg:border-b-0">
-        <legend className="text-[19px] font-semibold">
-          <span className="text-braise-texte font-display">1.</span> Configuration de votre bois
-        </legend>
+      {/* ⚠️ Le padding est porté par ce DIV, pas par le `fieldset` : une
+          `<legend>` s'ancre sur la bordure de son `fieldset` et ignore son
+          padding supérieur. Avec le padding sur le fieldset, ce titre montait
+          de 30 px et les trois colonnes démarraient en escalier. */}
+      <div className="border-aubier-bord border-b p-5 sm:p-7 lg:border-r lg:border-b-0">
+        <fieldset>
+          {/* Les trois volets ouvrent sur un titre de même hauteur et de même
+              graisse : c'est ce qui les aligne. */}
+          <legend className="flex h-8 items-center text-[19px] font-semibold">
+            <span className="text-braise-texte mr-1.5">1.</span> Configuration de votre bois
+          </legend>
 
-        <div
-          className="mt-6 grid gap-1.5"
-          style={{ gridTemplateColumns: `repeat(${vignettes.length}, minmax(0, 1fr))` }}
-        >
-          {vignettes.map((l) => {
+          <div
+            className="mt-6 grid gap-1.5"
+            style={{ gridTemplateColumns: `repeat(${vignettes.length}, minmax(0, 1fr))` }}
+          >
+            {vignettes.map((l) => {
+              const inputId = `${groupeLongueur}-${l.cm}`;
+              const active = l.cm === cm;
+              return (
+                <div key={l.cm}>
+                  <input
+                    type="radio"
+                    id={inputId}
+                    name={groupeLongueur}
+                    checked={active}
+                    onChange={() => choisirLongueur(l.cm)}
+                    className="peer sr-only"
+                  />
+                  <label
+                    htmlFor={inputId}
+                    className={cn(
+                      "flex cursor-pointer flex-col items-center rounded-[8px] border p-2 pb-3 transition-colors duration-150",
+                      "peer-focus-visible:outline-braise peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2",
+                      active ? "border-encre/25 bg-aubier" : "hover:bg-aubier border-transparent",
+                    )}
+                  >
+                    <BucheIllustration
+                      cm={l.cm}
+                      maxCm={maxCmVignette}
+                      selectionnee={active}
+                      className="h-16 w-full"
+                    />
+                    <span
+                      className={cn(
+                        "tabulaire mt-1 text-[15px]",
+                        active ? "text-encre font-semibold" : "text-cendre",
+                      )}
+                    >
+                      {l.label}
+                    </span>
+                    {/* Pastille : l'état ne repose jamais sur la couleur seule */}
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "mt-2 flex size-[18px] items-center justify-center rounded-full border-2",
+                        active ? "border-encre" : "border-aubier-bord",
+                      )}
+                    >
+                      {active && <span className="bg-encre block size-[9px] rounded-full" />}
+                    </span>
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+
+          {longueursSecondaires.map((l) => {
             const inputId = `${groupeLongueur}-${l.cm}`;
             const active = l.cm === cm;
             return (
-              <div key={l.cm}>
+              <div key={l.cm} className="mt-4">
                 <input
                   type="radio"
                   id={inputId}
@@ -226,92 +282,42 @@ export function ChoixBois({
                 <label
                   htmlFor={inputId}
                   className={cn(
-                    "flex cursor-pointer flex-col items-center rounded-[8px] border p-2 pb-3 transition-colors duration-150",
+                    "flex cursor-pointer items-center gap-2.5 rounded-[6px] border px-3 py-2.5 text-[15px] transition-colors",
                     "peer-focus-visible:outline-braise peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2",
-                    active ? "border-encre/25 bg-aubier" : "hover:bg-aubier border-transparent",
+                    active ? "border-encre/25 bg-aubier" : "border-aubier-bord hover:bg-aubier",
                   )}
                 >
-                  <BucheIllustration
-                    cm={l.cm}
-                    maxCm={maxCmVignette}
-                    selectionnee={active}
-                    className="h-16 w-full"
-                  />
-                  <span
-                    className={cn(
-                      "tabulaire mt-1 text-[15px]",
-                      active ? "text-encre font-semibold" : "text-cendre",
-                    )}
-                  >
-                    {l.label}
-                  </span>
-                  {/* Pastille : l'état ne repose jamais sur la couleur seule */}
                   <span
                     aria-hidden="true"
                     className={cn(
-                      "mt-2 flex size-[18px] items-center justify-center rounded-full border-2",
+                      "flex size-[18px] shrink-0 items-center justify-center rounded-full border-2",
                       active ? "border-encre" : "border-aubier-bord",
                     )}
                   >
                     {active && <span className="bg-encre block size-[9px] rounded-full" />}
                   </span>
+                  <span className={cn("leading-snug", active ? "font-semibold" : "text-cendre")}>
+                    Aussi en {l.label}, à recouper soi-même
+                  </span>
                 </label>
               </div>
             );
           })}
-        </div>
 
-        {longueursSecondaires.map((l) => {
-          const inputId = `${groupeLongueur}-${l.cm}`;
-          const active = l.cm === cm;
-          return (
-            <div key={l.cm} className="mt-4">
-              <input
-                type="radio"
-                id={inputId}
-                name={groupeLongueur}
-                checked={active}
-                onChange={() => choisirLongueur(l.cm)}
-                className="peer sr-only"
-              />
-              <label
-                htmlFor={inputId}
-                className={cn(
-                  "flex cursor-pointer items-center gap-2.5 rounded-[6px] border px-3 py-2.5 text-[15px] transition-colors",
-                  "peer-focus-visible:outline-braise peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2",
-                  active ? "border-encre/25 bg-aubier" : "border-aubier-bord hover:bg-aubier",
-                )}
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "flex size-[18px] shrink-0 items-center justify-center rounded-full border-2",
-                    active ? "border-encre" : "border-aubier-bord",
-                  )}
-                >
-                  {active && <span className="bg-encre block size-[9px] rounded-full" />}
-                </span>
-                <span className={cn("leading-snug", active ? "font-semibold" : "text-cendre")}>
-                  Aussi en {l.label}, à recouper soi-même
-                </span>
-              </label>
-            </div>
-          );
-        })}
-
-        {longueurCourante?.hint && (
-          <p className="text-cendre mt-5 text-[15px]">
-            <span className="text-encre font-semibold">{longueurCourante.label}</span> —{" "}
-            {longueurCourante.hint}
-          </p>
-        )}
-      </fieldset>
+          {longueurCourante?.hint && (
+            <p className="text-cendre mt-5 text-[15px]">
+              <span className="text-encre font-semibold">{longueurCourante.label}</span> —{" "}
+              {longueurCourante.hint}
+            </p>
+          )}
+        </fieldset>
+      </div>
 
       {/* ═══════════ 2. Essence ═══════════ */}
       <div className="border-aubier-bord border-b p-5 sm:p-7 lg:border-r lg:border-b-0">
         <fieldset>
-          <legend className="text-[19px] font-semibold">
-            <span className="text-braise-texte font-display">2.</span> Type de bois
+          <legend className="flex h-8 items-center text-[19px] font-semibold">
+            <span className="text-braise-texte mr-1.5">2.</span> Type de bois
           </legend>
 
           <div className="mt-6 grid grid-cols-2 gap-2">
@@ -339,25 +345,44 @@ export function ChoixBois({
                     className={cn(
                       "flex h-full cursor-pointer flex-col items-center rounded-[8px] border p-3 text-center transition-colors duration-150",
                       "peer-focus-visible:outline-braise peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2",
-                      active ? "border-encre/30 bg-aubier" : "border-aubier-bord hover:bg-aubier",
+                      // Sélection en carte PLEINE sombre : l'état choisi doit se
+                      // voir d'un coup d'œil, à un mètre du téléphone.
+                      active
+                        ? "border-sapin bg-sapin text-aubier"
+                        : "border-aubier-bord hover:bg-aubier",
                       !dispo && "cursor-not-allowed opacity-40",
                     )}
                   >
                     {resineux ? (
-                      <Trees size={19} strokeWidth={1.6} className="text-sapin" aria-hidden="true" />
+                      <Trees
+                        size={19}
+                        strokeWidth={1.6}
+                        className={active ? "text-seve" : "text-sapin"}
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <Leaf size={19} strokeWidth={1.6} className="text-sapin" aria-hidden="true" />
+                      <Leaf
+                        size={19}
+                        strokeWidth={1.6}
+                        className={active ? "text-seve" : "text-sapin"}
+                        aria-hidden="true"
+                      />
                     )}
                     <span
                       className={cn(
                         "mt-2 text-[15px] leading-tight",
-                        active ? "text-encre font-semibold" : "text-encre/85",
+                        active ? "text-aubier font-semibold" : "text-encre/85",
                       )}
                     >
                       {p.name}
                     </span>
                     {p.shortDescription && (
-                      <span className="text-cendre mt-1 text-[12px] leading-tight">
+                      <span
+                        className={cn(
+                          "mt-1 text-[12px] leading-tight",
+                          active ? "text-aubier/75" : "text-cendre",
+                        )}
+                      >
                         {p.shortDescription}
                       </span>
                     )}
@@ -377,24 +402,18 @@ export function ChoixBois({
         {/* ─── Le bois choisi, en clair ─── */}
         {variante && ligne ? (
           <div className="border-aubier-bord mt-6 border-t pt-5">
-            <div className="flex items-start gap-4">
-              <PileIllustration
-                graine={variante.cutLengthCm ?? 33}
-                className="border-aubier-bord h-[86px] w-[104px] shrink-0 overflow-hidden rounded-[8px] border"
-              />
-              <div className="min-w-0">
-                <p className="text-[19px] leading-tight font-semibold">
-                  Bûches {variante.cutLengthLabel}
-                  <span className="text-cendre block font-normal">{produit.name}</span>
-                </p>
-                <p className="text-cendre mt-2 text-[15px] leading-snug">
-                  {variante.humidityClass === "H1" && "Sec et prêt à brûler"}
-                  {variante.humidityClass === "H2" && "Mi-sec, à finir de sécher"}
-                  {variante.humidityClass === "H3" && "Fraîchement coupé"}
-                  {variante.measuredHumidityPct !== null &&
-                    ` — humidité ${variante.measuredHumidityPct.toLocaleString("fr-FR")} %`}
-                </p>
-              </div>
+            <div>
+              <p className="text-[19px] leading-tight font-semibold">
+                Bûches {variante.cutLengthLabel}
+                <span className="text-cendre block font-normal">{produit.name}</span>
+              </p>
+              <p className="text-cendre mt-2 text-[15px] leading-snug">
+                {variante.humidityClass === "H1" && "Sec et prêt à brûler"}
+                {variante.humidityClass === "H2" && "Mi-sec, à finir de sécher"}
+                {variante.humidityClass === "H3" && "Fraîchement coupé"}
+                {variante.measuredHumidityPct !== null &&
+                  ` — humidité ${variante.measuredHumidityPct.toLocaleString("fr-FR")} %`}
+              </p>
             </div>
 
             <p className="mt-4">

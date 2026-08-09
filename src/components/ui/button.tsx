@@ -24,6 +24,17 @@ const buttonVariants = cva(
         default: "bg-primary text-primary-foreground hover:bg-primary/85",
         /** Conversion : « Ajouter au panier », « Payer ». Un seul par écran. */
         cta: "bg-braise text-white hover:bg-[#a83f12]",
+        /**
+         * Action principale du parcours d'achat public, en sève.
+         *
+         * ⚠️ Écart de charte assumé (docs/03 §2.1 et §9 ter) : la maquette
+         * client du 9 août 2026 place l'or sur le bouton de validation. Le
+         * texte est en encre et non en blanc — blanc sur sève ne donne que 2:1
+         * de contraste, encre sur sève dépasse 9:1.
+         *
+         * Réservé au registre PUBLIC. L'administration garde `cta` en braise.
+         */
+        or: "bg-seve text-encre hover:bg-[#c8942f]",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/70",

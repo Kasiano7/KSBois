@@ -105,7 +105,7 @@ export function ChoixPaiement({
         <p className="text-cendre mt-2 text-[17px]">
           Votre commande est enregistrée. Il ne reste que le paiement.
         </p>
-        <div className="border-aubier-bord bg-aubier-pur mt-5 rounded-[8px] border p-5">
+        <div className="border-aubier-bord bg-aubier-pur mt-5 rounded-[14px] border p-5">
           <FormulaireCarte donnees={paiementCarte} />
         </div>
       </div>
@@ -198,7 +198,7 @@ export function ChoixPaiement({
 
       <Button
         type="button"
-        variant="cta"
+        variant="or"
         size="cta"
         disabled={enCours || !methode || !cgv}
         onClick={valider}

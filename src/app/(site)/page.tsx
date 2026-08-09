@@ -1,10 +1,11 @@
+import Image from "next/image";
 import { Truck, Droplets, MapPin, Leaf, ShieldCheck, Star, Users } from "lucide-react";
 import { ChoixBois } from "@/components/produit/choix-bois";
 import { BandeauLivraison } from "@/components/produit/bandeau-livraison";
-import { EnteteSite } from "@/components/site/entete";
 import { getTenant } from "@/lib/tenant";
 import { listProducts } from "@/server/catalogue";
 import { getContexteLivraison } from "@/server/livraison-contexte";
+import herosBucheron from "@/assets/heros-bucheron.png";
 
 export default async function Accueil() {
   const tenant = await getTenant();
@@ -51,48 +52,69 @@ export default async function Accueil() {
       {/* ═══════════════════════════════════════════════════════════════
           HÉROS — registre sombre. « On vend la confiance dans le noir. »
 
-          ⚠️ Le fond est un dégradé, PAS une photo : le compte ImageKit n'est
-          pas ouvert et le projet interdit les images bouche-trou en production
-          (docs/07, critères de recette). Le jour où la photo du shooting
-          arrive, elle se pose ici en `<img>` plein cadre sous le voile, sans
-          rien changer d'autre.
+          La photo occupe tout le cadre ; un voile dégradé la recouvre pour que
+          le titre reste lisible quel que soit le recadrage (docs/03 §10 :
+          jamais de texte sur photo sans voile de lisibilité contrôlé).
           ═══════════════════════════════════════════════════════════════ */}
       <section className="registre-sombre relative isolate overflow-hidden">
-        {/* Fond : profondeur de sous-bois + lueur de braise à droite */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 -z-10"
-          style={{
-            background:
-              "radial-gradient(120% 90% at 78% 22%, rgba(196,80,27,0.30) 0%, rgba(196,80,27,0.07) 34%, transparent 62%)," +
-              "radial-gradient(90% 70% at 12% 8%, rgba(46,76,58,0.42) 0%, transparent 58%)," +
-              "linear-gradient(168deg, #1d1712 0%, #171310 46%, #100d0a 100%)",
-          }}
+        <Image
+          src={herosBucheron}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          placeholder="blur"
+          /* Cadrage centré : sur grand écran le bandeau est plus large que la
+             photo, le rognage est donc vertical et la position horizontale n'a
+             aucun effet. Sur téléphone, en revanche, elle décide de ce qu'on
+             voit — et c'est le bûcheron qu'on veut garder, pas la cabane. */
+          className="-z-20 object-cover object-center"
         />
 
-        <EnteteSite tenant={tenant} />
+        {/* Voile de lisibilité, en deux régimes.
+
+            Sur téléphone, le texte occupe TOUTE la largeur : il lui faut un
+            voile uniforme, sinon le sous-titre passe sur le visage du bûcheron
+            et devient illisible. Sur grand écran, le texte tient à gauche : on
+            assombrit ce côté et on laisse la photo respirer à droite. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 sm:hidden"
+          style={{ background: "rgba(16,13,10,0.74)" }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 hidden sm:block"
+          style={{
+            background:
+              "linear-gradient(100deg, rgba(16,13,10,0.95) 0%, rgba(16,13,10,0.86) 34%, rgba(16,13,10,0.42) 62%, rgba(16,13,10,0.30) 100%)",
+          }}
+        />
 
         <div className="mx-auto max-w-[1240px] px-5 pt-32 pb-40 sm:pt-40 sm:pb-48 lg:pt-44">
           <h1 className="max-w-[15ch] text-[40px] leading-[0.98] sm:text-[62px] lg:text-[72px]">
             Du bois sec, coupé et livré près de chez vous.
           </h1>
 
-          <p className="text-cendre-clair mt-7 max-w-[46ch] text-[19px] leading-relaxed sm:text-[21px]">
-            Nous abattons, fendons et séchons notre bois nous-mêmes.
-            <br className="hidden sm:block" /> Livré chez vous avec le soin d&apos;un vrai bûcheron.
+          <p className="text-cendre-clair mt-7 max-w-[54ch] text-[19px] leading-relaxed sm:text-[21px]">
+            Sec, local et prêt à brûler.
+            <br />
+            Livré chez vous avec le soin d&apos;un vrai bûcheron.
           </p>
 
           <ul className="mt-10 flex flex-wrap items-stretch gap-y-5">
             {preuves.map(({ icone: Icone, titre, texte }, index) => (
               <li
                 key={titre}
+                /* Le filet séparateur et son décalage n'existent qu'à partir de
+                   `sm` : empilés sur téléphone, ils dessinaient un escalier. */
                 className={
                   index > 0
-                    ? "border-aubier/15 flex items-center gap-3 pr-7 pl-7 sm:border-l"
-                    : "flex items-center gap-3 pr-7"
+                    ? "border-aubier/20 flex items-center gap-3 sm:border-l sm:pr-7 sm:pl-7"
+                    : "flex items-center gap-3 sm:pr-7"
                 }
               >
-                <span className="border-seve/40 flex size-11 shrink-0 items-center justify-center rounded-full border">
+                <span className="border-seve/40 bg-ecorce/40 flex size-11 shrink-0 items-center justify-center rounded-full border backdrop-blur-[2px]">
                   <Icone size={19} strokeWidth={1.6} className="text-seve" aria-hidden="true" />
                 </span>
                 <span>
@@ -159,9 +181,9 @@ export default async function Accueil() {
             </summary>
             <p className="text-cendre prose-bois px-5 pb-5 text-[15px] leading-relaxed">
               Le stère n&apos;est plus une unité de mesure légale depuis 1977 : la vente se fait en{" "}
-              <strong className="text-encre">mètres cubes apparents</strong>. Pour du bois en 1 m, un
-              stère équivaut à 1 m³ apparent. Recoupé plus court, le bois s&apos;empile plus dense :
-              1 stère de 1 m donne environ 0,70 m³ apparent en 33 cm.
+              <strong className="text-encre">mètres cubes apparents</strong>. Pour du bois en 1 m,
+              un stère équivaut à 1 m³ apparent. Recoupé plus court, le bois s&apos;empile plus
+              dense : 1 stère de 1 m donne environ 0,70 m³ apparent en 33 cm.
               {tenant.pricingBasis === "map_delivered"
                 ? " Nos prix s'entendent au m³ apparent de la longueur que vous recevez."
                 : " Nos prix s'entendent au stère équivalent bois de 1 m."}

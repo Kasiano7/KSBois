@@ -66,7 +66,7 @@ export default async function PagePaiement() {
       <h1 className="mt-6 text-[32px] sm:text-[42px]">Votre commande</h1>
 
       {/* Récapitulatif complet : dernière occasion de vérifier avant de valider */}
-      <div className="border-aubier-bord bg-aubier-pur mt-8 rounded-[8px] border p-5">
+      <div className="border-aubier-bord bg-aubier-pur mt-8 rounded-[14px] border p-5">
         <ul className="divide-aubier-bord divide-y">
           {panier.lignes.map((ligne) => (
             <li key={ligne.itemId} className="flex justify-between gap-3 py-3 first:pt-0">

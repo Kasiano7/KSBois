@@ -40,7 +40,7 @@ export default async function PageCompte() {
       {derniere ? (
         <>
           {/* ---- LA chose à faire : recommander ---- */}
-          <section className="border-aubier-bord bg-aubier-pur mt-6 rounded-[8px] border p-5 sm:p-7">
+          <section className="border-aubier-bord bg-aubier-pur mt-6 rounded-[14px] border p-5 sm:p-7">
             <p className="micro-label text-cendre">Votre dernière commande</p>
 
             <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
@@ -131,7 +131,7 @@ export default async function PageCompte() {
             Vous avez déjà commandé chez nous ? Vérifiez que vous utilisez bien la même adresse
             email que lors de votre commande : c&apos;est elle qui rattache votre historique.
           </p>
-          <Button asChild variant="cta" size="cta" className="mt-6">
+          <Button asChild variant="or" size="cta" className="mt-6">
             <Link href="/#commander">Commander mon bois</Link>
           </Button>
         </section>

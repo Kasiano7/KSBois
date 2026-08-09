@@ -53,7 +53,9 @@ export function PanneauSelection({
 
   return (
     <aside className="bg-aubier flex flex-col p-5 sm:p-7">
-      <p className="font-display text-[22px] leading-none">Votre sélection</p>
+      {/* Même hauteur et même graisse que les titres « 1. » et « 2. » : les
+          trois colonnes doivent démarrer sur la même ligne. */}
+      <p className="flex h-8 items-center text-[19px] font-semibold">Votre sélection</p>
 
       {/* ─── Ce qui a été choisi, ligne à ligne ─── */}
       <dl className="border-aubier-bord mt-5 space-y-3 border-t pt-5 text-[15px]">
@@ -122,8 +124,9 @@ export function PanneauSelection({
 
       <Button
         type="button"
+        variant="or"
         size="cta"
-        className="bg-seve text-encre mt-6 w-full hover:bg-[#c8942f]"
+        className="mt-6 w-full"
         disabled={enCours || desactive}
         onClick={onAjouter}
       >

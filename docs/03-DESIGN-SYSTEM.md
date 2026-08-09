@@ -324,6 +324,48 @@ La taille `sm` (36 px) subsiste, **réservée aux tableaux denses de l'administr
 
 ---
 
+## 9 ter. Accueil — maquette client du 9 août 2026
+
+Le client a fourni une maquette de l'accueil. Elle a été suivie pour la **mise en page** ; les écarts ci-dessous sont assumés et datés.
+
+**Repris de la maquette :**
+
+- En-tête en surimpression du héros : marque à gauche, navigation, icônes compte et panier (avec pastille de comptage), bouton « Commander mon bois » cerclé.
+- Héros plein cadre sombre, titre display sur deux à trois lignes, sous-titre court, puis **trois preuves** avec icônes cerclées séparées par des filets.
+- **Configurateur en une seule grande carte claire qui chevauche le bas du héros**, en trois volets : longueur · type de bois · « Votre sélection ». Le cœur transactionnel est ainsi visible sans défiler.
+- Essence sélectionnée en **carte pleine sombre** (le sélecteur de longueur garde, lui, le cadre clair et sa pastille radio — la maquette distingue elle aussi les deux gestes).
+- Bandeau d'estimation de livraison à icône cerclée, puis bandeau de réassurance à quatre entrées.
+
+**Écarts assumés :**
+
+| Point | Décision | Raison |
+|---|---|---|
+| Bouton « Valider ma sélection » en `--seve` | **Accepté**, contre la règle §2.1 qui réserve la sève aux badges et les CTA à la braise | Demande explicite du client sur la maquette. La braise reste l'accent du prix : l'écran ne porte donc pas deux accents concurrents |
+| Texte du bouton or | `--encre`, pas blanc | Blanc sur sève ne donne que 2:1 de contraste. Encre sur sève dépasse 9:1 et reste fidèle au visuel |
+| Fond du héros | Dégradé, **pas de photo** | Le compte ImageKit n'est pas ouvert et la recette interdit tout bouche-trou en production (`docs/07`). La photo du shooting se posera en `<img>` plein cadre sous le voile, sans autre changement |
+| Navigation | Trois liens (« Bois de chauffage », « Livraison », « Devis sur mesure ») au lieu des six de la maquette | « À propos », « Conseils » et « Contact » n'existent pas encore. Un lien mort vaut moins qu'un menu court (docs/05 §1) |
+| Textes et chiffres | Ceux du site, pas ceux de la maquette | La maquette est une image générée : elle écrit « m² » au lieu de m³ apparents, « Esseness sfiectionnées », et un prix inventé de 125 €. L'unité légale et les prix réels priment (`PLAN.md` §3.1) |
+| Deux boutons d'ajout | Conservés (« Ajouter au panier » près du produit, « Valider ma sélection » dans le récapitulatif) | Conformes à la maquette, et les deux appellent **la même** fonction : aucune divergence possible |
+
+**Généralisation au registre public (fait).** Les routes publiques vivent désormais dans le groupe `(site)` — `page.tsx`, `panier`, `commande`, `devis`, `compte`, `connexion` — dont le layout appose l'en-tête. Le groupe n'ajoute aucun segment d'URL : les chemins sont inchangés.
+
+L'en-tête a deux variantes, et **la marque ramène toujours à l'accueil** : c'est la sortie de secours d'une audience qui n'utilise pas le bouton « précédent ».
+
+| Variante | Où | Rendu |
+|---|---|---|
+| `surimpression` | accueil | posée sur la photo, sans fond |
+| `pleine` | toutes les autres pages publiques | barre écorce collante en haut |
+
+⚠️ **Un layout ne reçoit pas le chemin demandé.** `src/proxy.ts` le dépose dans l'en-tête `x-chemin`, que le layout lit pour choisir la variante. Sans ce détour, il aurait fallu dupliquer le layout dans deux groupes de routes imbriqués.
+
+**Photo du héros (fait).** `src/assets/heros-bucheron.png`, servie par `next/image` en `fill` + `priority` + `placeholder="blur"`. Deux voiles de lisibilité, et c'est volontaire : uniforme sur téléphone où le texte occupe toute la largeur, dégradé de gauche à droite sur grand écran où le texte tient à gauche et où le bûcheron doit rester visible à droite. Le cadrage est centré : sur grand écran le rognage est vertical, la position horizontale n'a donc aucun effet ; sur téléphone elle décide de ce qu'on voit, et c'est le bûcheron qu'on garde.
+
+**Bouton or, variante `or`.** L'écart de charte est porté par une variante de bouton dédiée (`src/components/ui/button.tsx`) et non par des classes en ligne, pour qu'il reste réversible en un seul endroit. Elle est **réservée au registre public** — l'administration garde `cta` en braise.
+
+**Piège d'alignement rencontré.** Les trois volets du configurateur démarraient en escalier : une `<legend>` s'ancre sur la bordure de son `<fieldset>` et **ignore son `padding-top`**. Le padding doit donc être porté par un `<div>` englobant, jamais par le `fieldset` lui-même. Les trois titres partagent en outre la même boîte (`flex h-8 items-center`, 19 px, semi-gras).
+
+---
+
 ## 10. Ce qu'on ne fait pas
 
 Liste explicite pour éviter la dérive « site moderne générique » :

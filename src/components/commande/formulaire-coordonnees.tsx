@@ -275,7 +275,7 @@ export function FormulaireCoordonnees({
         </p>
       )}
 
-      <Button type="submit" variant="cta" size="cta" disabled={enCours} className="mt-8 w-full sm:w-auto">
+      <Button type="submit" variant="or" size="cta" disabled={enCours} className="mt-8 w-full sm:w-auto">
         {enCours ? (
           <>
             <Loader2 className="animate-spin" aria-hidden="true" />

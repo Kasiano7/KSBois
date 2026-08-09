@@ -2,13 +2,19 @@ import Link from "next/link";
 import { TreePine, User, ShoppingCart } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { getCartId } from "@/server/panier";
+import { cn } from "@/lib/utils";
 import type { Tenant } from "@/lib/tenant";
 
 /**
- * En-tête du site public.
+ * En-tête du site public — présente sur TOUTES les pages du registre public.
  *
- * Posée EN SURIMPRESSION du héros, sans fond : la photo continue derrière, et
- * la bascule vers le registre clair se fait plus bas, d'un coup (docs/03 §1).
+ * Deux variantes, une seule implémentation :
+ *  • `surimpression` — accueil : posée sur la photo du héros, sans fond, la
+ *    photo continue derrière ;
+ *  • `pleine` — pages intérieures : barre pleine écorce, collante en haut.
+ *
+ * La marque ramène toujours à l'accueil : c'est le repère de sortie de secours
+ * d'une audience qui ne connaît pas le bouton « précédent » de son navigateur.
  *
  * ⚠️ La navigation ne liste que des destinations qui EXISTENT. Le principe du
  * « chantier visible » vaut aussi ici : mieux vaut trois liens qui marchent que
@@ -33,17 +39,31 @@ const LIENS = [
   { href: "/devis", libelle: "Devis sur mesure" },
 ];
 
-export async function EnteteSite({ tenant }: { tenant: Tenant }) {
+export async function EnteteSite({
+  tenant,
+  variante = "pleine",
+}: {
+  tenant: Tenant;
+  variante?: "surimpression" | "pleine";
+}) {
   const articles = await nombreArticlesPanier();
+  const surimpression = variante === "surimpression";
 
   return (
-    <header className="absolute inset-x-0 top-0 z-20">
-      <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-3 px-5 py-5">
-        {/* ── Marque ── */}
-        <Link href="/" className="flex items-center gap-3">
+    <header
+      className={cn(
+        "z-30",
+        surimpression
+          ? "absolute inset-x-0 top-0"
+          : "bg-ecorce border-ecorce-bord sticky top-0 border-b",
+      )}
+    >
+      <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 sm:py-5">
+        {/* ── Marque : retour à l'accueil depuis n'importe quelle page ── */}
+        <Link href="/" className="group flex items-center gap-3">
           <TreePine size={30} strokeWidth={1.5} className="text-seve shrink-0" aria-hidden="true" />
           <span>
-            <span className="font-display text-aubier block text-[24px] leading-none">
+            <span className="font-display text-aubier block text-[24px] leading-none group-hover:underline group-hover:underline-offset-4">
               {tenant.name}
             </span>
             <span className="micro-label text-cendre-clair mt-1 block text-[10px]">
@@ -99,12 +119,12 @@ export async function EnteteSite({ tenant }: { tenant: Tenant }) {
             )}
           </Link>
 
-          <a
-            href="#commander"
+          <Link
+            href="/#commander"
             className="border-aubier/35 text-aubier hover:bg-aubier hover:text-encre ml-1.5 hidden h-11 items-center rounded-[4px] border px-5 text-[15px] font-semibold transition-colors sm:inline-flex"
           >
             Commander mon bois
-          </a>
+          </Link>
         </div>
       </div>
     </header>

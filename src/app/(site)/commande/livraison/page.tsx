@@ -22,7 +22,7 @@ export default async function PageCoordonnees() {
     return (
       <main className="mx-auto max-w-[820px] px-5 py-20">
         <h1 className="text-[32px]">Votre panier est vide</h1>
-        <Button asChild variant="cta" size="cta" className="mt-8">
+        <Button asChild variant="or" size="cta" className="mt-8">
           <Link href="/#commander">Voir le bois de chauffage</Link>
         </Button>
       </main>

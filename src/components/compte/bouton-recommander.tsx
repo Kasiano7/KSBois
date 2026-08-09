@@ -57,7 +57,7 @@ export function BoutonRecommander({
     <div>
       <Button
         type="button"
-        variant="cta"
+        variant="or"
         size={taille}
         className={taille === "cta" ? "w-full sm:w-auto" : undefined}
         disabled={enCours}
@@ -93,7 +93,7 @@ export function BoutonRecommander({
           </ul>
 
           {!erreur && (
-            <Button asChild variant="cta" size="lg" className="mt-4">
+            <Button asChild variant="or" size="lg" className="mt-4">
               <Link href="/panier">Voir mon panier et continuer</Link>
             </Button>
           )}
