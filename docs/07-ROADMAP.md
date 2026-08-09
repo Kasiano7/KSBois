@@ -88,12 +88,14 @@ npm run verify
 
 - **Écran statistiques** (`/admin/statistiques`) : période globale et comparaison, origine web/téléphone/admin, prix réellement vendu au m³, tunnel complet et abandons, demande perdue chiffrée, autonomie et priorité de stock, performance des devis, coût réel des zones, délai commande → livraison, clients à réactiver, annulations/remboursements, promotions, devis PDF → commandes et SEO → CA. Instrumentation anonyme par sessions de 30 minutes, attribution figée sur les commandes et purge à 25 mois
 
+- **Espace client et recommande en 2 clics** (`/compte`) : connexion par lien magique sans mot de passe, création de compte en un clic depuis la confirmation de commande et depuis l'email, **rattachement automatique des commandes passées en invité** sur l'email vérifié, dernière commande et bouton « Recommander la même chose » seuls au-dessus de la ligne de flottaison, historique, détail de commande, adresses de livraison. La recommande remplit le panier à l'identique, reprend adresse et contraintes d'accès, et emmène directement au choix du créneau — sauf si un format a été retiré, si un prix a bougé ou si le stock ne suit plus, auquel cas elle dit ce qui a changé et renvoie au panier
+  - Correctif de fond au passage : le tunnel n'écrivait **aucune** fiche `customers` et ne renseignait jamais `orders.customer_id`. La policy `orders_customer_read` ne rendait donc aucune ligne — l'espace client aurait été vide pour tout le monde
+
 **⏳ Reste à faire sur le lot 1**
 
 - Modèles d'email restants : rappel la veille, livraison effectuée avec facture, récap quotidien
 - **`STRIPE_WEBHOOK_SECRET` à obtenir** : le webhook est écrit, signé et idempotent, mais inactif sans son secret. En local : `stripe listen --forward-to localhost:3000/api/webhooks/stripe`. En production : créer le point de terminaison dans le tableau de bord Stripe. En attendant, le paiement aboutit par la **vérification directe** auprès de l'API Stripe après confirmation — pas par le navigateur
 - **Domaine à vérifier chez Resend** : sans domaine vérifié, `onboarding@resend.dev` ne peut écrire qu'au titulaire du compte. Aucun client réel ne recevra d'email avant cette étape (+ SPF/DKIM/DMARC)
-- Compte client (l'authentification existe, l'espace client reste à faire), recommande en 2 clics
 - Administration : **dashboard, liste et fiche commande, tournée du jour, stock et tarifs, zones de livraison, créneaux, devis et statistiques ✅ faits**. Restent clients et réglages — écrans en « chantier visible » plutôt qu'en lien mort
 - Factures PDF et bons de livraison (le devis PDF sert de modèle : `src/pdf/devis.tsx`)
 - Pages contenu et SEO local, pages légales

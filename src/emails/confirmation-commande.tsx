@@ -31,6 +31,8 @@ export interface DonneesConfirmation {
   modePaiement: string;
   resteAPayerCents: number;
   lienCommande: string;
+  /** Espace client : c'est ici qu'un acheteur invité devient un client fidèle. */
+  lienEspaceClient: string;
 }
 
 const SUITE_PAIEMENT: Record<string, string> = {
@@ -104,6 +106,16 @@ export function ConfirmationCommande(d: DonneesConfirmation) {
         <Link href={d.lienCommande} style={styles.bouton}>
           Voir ma commande
         </Link>
+      </Section>
+
+      <Section style={{ margin: "16px 0 0" }}>
+        <Link href={d.lienEspaceClient} style={styles.boutonSecondaire}>
+          Créer mon espace en 1 clic
+        </Link>
+        <Text style={{ ...styles.discret, margin: "10px 0 0" }}>
+          Sans mot de passe. Vous y retrouverez cette commande, et vous pourrez commander le même
+          bois en deux clics l&apos;hiver prochain.
+        </Text>
       </Section>
     </Gabarit>
   );

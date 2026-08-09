@@ -269,11 +269,33 @@ export async function validerCommande(entree: unknown): Promise<ResultatEtape> {
     allowUnattendedDelivery: brouillon.allow_unattended_delivery,
   };
 
+  // Fiche client, créée ou retrouvée par l'adresse email.
+  //
+  // ⚠️ Sans elle, `orders.customer_id` reste nul et la policy
+  // `orders_customer_read` ne rend AUCUNE ligne : l'espace client serait vide,
+  // même pour un client qui vient de commander (docs/01 §4.2).
+  const { data: customerId, error: erreurClient } = await supabase.rpc("upsert_customer", {
+    p_company_id: tenant.id,
+    p_email: brouillon.email,
+    // Les paramètres facultatifs de la fonction Postgres ont un défaut `null` :
+    // on passe `undefined` pour les laisser jouer, jamais `null` explicitement.
+    p_first_name: brouillon.first_name ?? undefined,
+    p_last_name: brouillon.last_name ?? undefined,
+    p_phone: brouillon.phone ?? undefined,
+  });
+
+  if (erreurClient) {
+    // Non bloquant : une commande sans fiche client reste une commande valide,
+    // et le rattachement se fera à la création du compte.
+    console.error("[commande] fiche client :", erreurClient.message);
+  }
+
   const { data: commande, error: erreurCommande } = await supabase
     .from("orders")
     .insert({
       company_id: tenant.id,
       reference,
+      customer_id: customerId ?? null,
       is_guest: true,
       status: initialStatus(methode),
       email: brouillon.email,

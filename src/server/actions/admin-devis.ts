@@ -304,11 +304,23 @@ export async function convertirDevisEnCommande(entree: unknown): Promise<Resulta
     allowUnattendedDelivery: false,
   };
 
+  // Même fiche client que le tunnel : un client qui a d'abord demandé un devis
+  // puis commandé en ligne ne doit pas exister en double, et il doit retrouver
+  // cette commande dans son espace.
+  const { data: customerId } = await supabase.rpc("upsert_customer", {
+    p_company_id: session.companyId,
+    p_email: demande.email,
+    p_first_name: demande.prenom ?? undefined,
+    p_last_name: demande.nom ?? undefined,
+    p_phone: demande.telephone ?? undefined,
+  });
+
   const { data: commande, error: erreurCommande } = await supabase
     .from("orders")
     .insert({
       company_id: session.companyId,
       reference,
+      customer_id: customerId ?? null,
       is_guest: true,
       // Aucun mode de paiement n'est arrêté à ce stade : l'exploitant
       // l'enregistrera depuis la fiche commande, comme pour une commande

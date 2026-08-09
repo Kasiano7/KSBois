@@ -90,6 +90,50 @@ export async function connexionParMotDePasse(entree: unknown): Promise<ResultatA
   redirect(destinationSure(parsed.data.suite));
 }
 
+/**
+ * Connexion — ou création de compte — d'un CLIENT, par lien magique.
+ *
+ * Différence assumée avec `connexionParLienMagique` : ici `shouldCreateUser` est
+ * vrai. L'accès à l'administration se mérite par une ligne dans
+ * `company_members` ; l'espace client, lui, doit s'ouvrir en un clic à qui
+ * possède l'adresse email — c'est tout l'intérêt du lien magique pour une
+ * clientèle qui ne veut pas retenir de mot de passe (PLAN.md §2.4).
+ *
+ * Aucun mot de passe n'est proposé nulle part dans ce parcours.
+ */
+export async function connexionClient(entree: unknown): Promise<ResultatAuth> {
+  const parsed = EmailSchema.safeParse(entree);
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Requête invalide." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  // La destination reste dans l'espace client : un lien de connexion client ne
+  // doit jamais servir de tremplin vers l'administration.
+  const suite = parsed.data.suite?.startsWith("/compte") ? parsed.data.suite : "/compte";
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email: parsed.data.email,
+    options: {
+      emailRedirectTo: `${site}/auth/callback?suite=${encodeURIComponent(suite)}`,
+      shouldCreateUser: true,
+    },
+  });
+
+  if (error) {
+    console.error("[auth] lien magique client :", error.message);
+    return {
+      ok: false,
+      message:
+        "L'envoi du lien a échoué. Réessayez dans un instant, ou appelez-nous : nous retrouverons votre commande.",
+    };
+  }
+
+  return { ok: true, lienEnvoye: true };
+}
+
 export async function deconnexion(): Promise<void> {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();

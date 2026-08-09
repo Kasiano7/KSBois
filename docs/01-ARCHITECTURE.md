@@ -220,6 +220,8 @@ create table company_members (
 create table customers (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references companies(id) on delete cascade,
+  -- ⚠️ Référence PROFILES, pas auth.users : un compte créé par lien magique
+  -- n'a pas encore de profil, il faut l'insérer d'abord (migration 20260809130000).
   user_id uuid references profiles(id) on delete set null,   -- null = invité
   email text not null, phone text,
   first_name text, last_name text,

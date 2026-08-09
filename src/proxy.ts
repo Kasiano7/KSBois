@@ -14,6 +14,17 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const ESPACES_PROTEGES = ["/admin", "/livreur", "/compte"];
 
+/** Pages d'un espace protégé qui doivent rester ouvertes : sinon, boucle. */
+const EXCEPTIONS = ["/compte/connexion"];
+
+/**
+ * Où renvoyer un visiteur non connecté. Un client n'a rien à faire sur l'écran
+ * de connexion de l'entreprise, et réciproquement.
+ */
+function pageDeConnexion(chemin: string): string {
+  return chemin.startsWith("/compte") ? "/compte/connexion" : "/connexion";
+}
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -47,11 +58,13 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const chemin = request.nextUrl.pathname;
-  const estProtege = ESPACES_PROTEGES.some((p) => chemin === p || chemin.startsWith(`${p}/`));
+  const estProtege =
+    ESPACES_PROTEGES.some((p) => chemin === p || chemin.startsWith(`${p}/`)) &&
+    !EXCEPTIONS.some((p) => chemin === p || chemin.startsWith(`${p}/`));
 
   if (estProtege && !user) {
     const connexion = request.nextUrl.clone();
-    connexion.pathname = "/connexion";
+    connexion.pathname = pageDeConnexion(chemin);
     connexion.searchParams.set("suite", chemin);
     return NextResponse.redirect(connexion);
   }
@@ -61,5 +74,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // On évite les fichiers statiques et les images : inutile d'y rafraîchir une session.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico)$).*)",
+  ],
 };

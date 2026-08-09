@@ -45,7 +45,7 @@ d'écrire du code Next**, ne te fie pas à ta mémoire.
 la charte. Supabase local en Docker (ports 545xx). 11 migrations : schéma complet,
 fonctions transactionnelles, RLS, GRANT, brouillon de commande, ordre de tournée,
 relevés de carburant, traçabilité des fermetures de créneaux, proposition
-commerciale des devis. Seed à deux
+commerciale des devis, rattachement des commandes à une fiche client. Seed à deux
 entreprises + comptes de démonstration.
 Résolution du tenant par nom de domaine, thème injecté depuis la base.
 
@@ -88,14 +88,21 @@ en commande en un clic sans ressaisie), **statistiques** (origine des ventes,
 prix réel au m³, tunnel et abandons, demande perdue, autonomie du stock,
 devis, rentabilité des zones, délais et clients à réactiver).
 
+**Espace client.** Connexion par lien magique sans mot de passe
+(`/compte/connexion`), création de compte proposée à la confirmation de commande
+et dans l'email, rattachement automatique des commandes passées en invité sur
+l'email vérifié, et surtout **recommande en 2 clics** : le panier est rempli à
+l'identique, l'adresse et les contraintes d'accès sont reprises, le client
+atterrit directement sur le choix du créneau. Si un format a disparu, si un prix
+a bougé ou si le stock ne suit plus, l'écran le dit et renvoie au panier.
+
 ## 4. Ce qu'il reste à faire, par ordre de valeur
 
-1. **Espace client et recommande en 2 clics** — l'authentification existe. C'est la fonctionnalité la plus rentable du site pour une clientèle qui rachète chaque année (`docs/03` §6.4).
-2. **Factures PDF et bons de livraison** — `src/pdf/document-devis.tsx` sert de modèle (mise en page commune, deux adaptateurs). Attention : `invoices` stocke des données structurées, pas seulement un PDF, pour préparer Factur-X.
-3. **Modèles d'email restants** : rappel la veille, livraison effectuée avec facture, récap quotidien à 7 h.
-4. **Écrans clients et réglages** — actuellement des pages « chantier visible » qui décrivent ce qu'elles feront.
-5. **Pages de contenu et SEO local** — accueil narrative, notre entreprise, savoir-faire, galerie, guides, pages communes, pages légales (CGV, mentions, rétractation, confidentialité).
-6. **ImageKit** — compte à créer, puis composant `<Media />` unique et transformations nommées (`docs/04`).
+1. **Factures PDF et bons de livraison** — `src/pdf/document-devis.tsx` sert de modèle (mise en page commune, deux adaptateurs). Attention : `invoices` stocke des données structurées, pas seulement un PDF, pour préparer Factur-X.
+2. **Modèles d'email restants** : rappel la veille, livraison effectuée avec facture, récap quotidien à 7 h.
+3. **Écrans clients et réglages** — actuellement des pages « chantier visible » qui décrivent ce qu'elles feront.
+4. **Pages de contenu et SEO local** — accueil narrative, notre entreprise, savoir-faire, galerie, guides, pages communes, pages légales (CGV, mentions, rétractation, confidentialité).
+5. **ImageKit** — compte à créer, puis composant `<Media />` unique et transformations nommées (`docs/04`).
 
 Les écrans d'administration inexistants affichent aujourd'hui un **chantier
 visible** via `src/components/admin/ecran-a-venir.tsx` plutôt qu'un lien mort.

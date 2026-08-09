@@ -96,3 +96,88 @@ export async function assertRole(roles: Role[]): Promise<Session> {
 export function peutVoirAdmin(role: Role): boolean {
   return role === "owner" || role === "staff";
 }
+
+// -----------------------------------------------------------------------------
+// Espace client — docs/03 §6.4
+//
+// Un CLIENT n'est pas un membre de l'entreprise : il n'a aucun rôle, il a une
+// fiche dans `customers`. Les deux sessions sont donc distinctes, et un client
+// authentifié n'obtient jamais le moindre accès à l'administration.
+// -----------------------------------------------------------------------------
+
+export interface ClientSession {
+  userId: string;
+  email: string;
+  customerId: string;
+  prenom: string | null;
+  nom: string | null;
+  telephone: string | null;
+}
+
+/**
+ * Session du client connecté, ou `null`.
+ *
+ * À la toute première visite, la fiche client est créée et les commandes
+ * passées EN INVITÉ avec la même adresse lui sont rattachées. Le rattachement
+ * s'appuie sur l'email vérifié par Supabase Auth — jamais sur une valeur
+ * fournie par le navigateur, sans quoi n'importe qui réclamerait les commandes
+ * d'un tiers en saisissant son adresse.
+ */
+export const getClientSession = cache(async (): Promise<ClientSession | null> => {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user?.email) return null;
+
+  const tenant = await getTenant();
+  if (!tenant) return null;
+
+  const admin = createSupabaseAdminClient();
+
+  const fiche = async () =>
+    admin
+      .from("customers")
+      .select("id, first_name, last_name, phone")
+      .eq("company_id", tenant.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+  let { data: client } = await fiche();
+
+  // Première visite : on crée la fiche et on récupère l'historique invité.
+  if (!client) {
+    const { error } = await admin.rpc("rattacher_client_au_compte", {
+      p_company_id: tenant.id,
+      p_user_id: user.id,
+      p_email: user.email,
+    });
+    if (error) {
+      console.error("[auth] rattachement du compte client :", error.message);
+      return null;
+    }
+    ({ data: client } = await fiche());
+  }
+
+  if (!client) return null;
+
+  return {
+    userId: user.id,
+    email: user.email,
+    customerId: client.id,
+    prenom: client.first_name,
+    nom: client.last_name,
+    telephone: client.phone,
+  };
+});
+
+/** Exige un client connecté. Redirige vers la connexion client sinon. */
+export async function requireClient(cheminActuel?: string): Promise<ClientSession> {
+  const session = await getClientSession();
+  if (!session) {
+    const suite = cheminActuel ? `?suite=${encodeURIComponent(cheminActuel)}` : "";
+    redirect(`/compte/connexion${suite}`);
+  }
+  return session;
+}

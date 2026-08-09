@@ -107,6 +107,7 @@ export async function envoyerConfirmationCommande(orderId: string): Promise<void
       lienCommande: acces?.token
         ? `${site}/commande/confirmation/${commande.reference}?jeton=${acces.token}`
         : `${site}/`,
+      lienEspaceClient: `${site}/compte/connexion`,
     }),
   });
 }

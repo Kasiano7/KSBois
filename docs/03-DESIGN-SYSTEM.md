@@ -218,9 +218,22 @@ Règles :
 - Validation à la sortie du champ, message d'erreur sous le champ concerné, jamais uniquement en haut de page.
 - Bouton final explicite : **« Payer 534,50 € »**, jamais « Valider ».
 
-### 6.4 Compte client
+### 6.4 Compte client — ✅ fait
 
 Écran d'accueil du compte = **une seule chose au-dessus de la ligne de flottaison** : la dernière commande avec un bouton **« Recommander la même chose »**. Ce bouton pré-remplit le panier à l'identique et emmène directement à l'étape 3 (créneau), l'adresse étant déjà connue. Deux clics, trente secondes. C'est la fonctionnalité la plus rentable du site pour une clientèle qui rachète chaque année.
+
+**Décisions prises à l'implémentation :**
+
+| Sujet | Choix retenu | Pourquoi |
+|---|---|---|
+| Connexion | `/compte/connexion`, **lien magique uniquement**, distinct de `/connexion` (entreprise) | Aucun mot de passe pour cette audience ; et un lien de connexion client ne doit jamais servir de tremplin vers l'administration |
+| Création de compte | `shouldCreateUser: true` côté client, `false` côté entreprise | L'accès à l'administration se mérite par une ligne dans `company_members` ; l'espace client s'ouvre à qui possède l'adresse email |
+| Historique invité | Rattaché automatiquement à la première connexion, sur l'email **vérifié par Supabase Auth** | Sans cela, un client qui a commandé sans compte ouvre un espace vide. Et se fier à une adresse saisie permettrait de réclamer les commandes d'un tiers |
+| Deux clics | Recommande → **étape créneau directement**, panier et coordonnées pré-remplis | C'est la promesse. Le créneau est la seule chose qui ne peut pas être reprise |
+| Sauf si quelque chose a changé | Format retiré, prix révisé, quantité ajustée, stock insuffisant → **on affiche ce qui a bougé et on renvoie au panier** | Un client qui découvre au paiement qu'il ne commande pas ce qu'il croyait ne revient pas |
+| Comparaison de prix | Sur le prix **réellement applicable**, palier dégressif de la quantité compris | Comparer les prix de base taisait une hausse réelle et annonçait « inchangé » à quelqu'un qui allait payer 35 € de moins |
+| Mes adresses | Reconstituées depuis les commandes passées, en lecture | La table `addresses` n'est alimentée par aucun parcours à ce jour : afficher un carnet d'adresses modifiable serait mentir sur ce que le site sait faire |
+| Dates | Année affichée sur tout l'historique | « Livrée le 18 novembre » ne dit pas de quel hiver on parle |
 
 ---
 

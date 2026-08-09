@@ -1551,9 +1551,9 @@ export type Database = {
           pricing_snapshot: Json | null
           promotion_code: string | null
           promotion_id: string | null
+          quote_pdf_before_order: boolean
           reference: string
           requested_slot_label: string | null
-          quote_pdf_before_order: boolean
           route_position: number | null
           shipping_address: Json | null
           slot_id: string | null
@@ -1603,9 +1603,9 @@ export type Database = {
           pricing_snapshot?: Json | null
           promotion_code?: string | null
           promotion_id?: string | null
+          quote_pdf_before_order?: boolean
           reference: string
           requested_slot_label?: string | null
-          quote_pdf_before_order?: boolean
           route_position?: number | null
           shipping_address?: Json | null
           slot_id?: string | null
@@ -1655,9 +1655,9 @@ export type Database = {
           pricing_snapshot?: Json | null
           promotion_code?: string | null
           promotion_id?: string | null
+          quote_pdf_before_order?: boolean
           reference?: string
           requested_slot_label?: string | null
-          quote_pdf_before_order?: boolean
           route_position?: number | null
           shipping_address?: Json | null
           slot_id?: string | null
@@ -2803,10 +2803,24 @@ export type Database = {
         Args: { p_company_id: string; p_kind: string }
         Returns: string
       }
+      rattacher_client_au_compte: {
+        Args: { p_company_id: string; p_email: string; p_user_id: string }
+        Returns: string
+      }
       release_order_stock: { Args: { p_order_id: string }; Returns: undefined }
       release_slot: { Args: { p_order_id: string }; Returns: undefined }
       reserve_order_stock: { Args: { p_order_id: string }; Returns: undefined }
       ship_order_stock: { Args: { p_order_id: string }; Returns: undefined }
+      upsert_customer: {
+        Args: {
+          p_company_id: string
+          p_email: string
+          p_first_name?: string
+          p_last_name?: string
+          p_phone?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
