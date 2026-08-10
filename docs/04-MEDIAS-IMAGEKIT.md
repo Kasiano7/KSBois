@@ -241,3 +241,42 @@ Une demi-journée en forêt + une demi-journée au dépôt. Idéalement en octob
 **Directives techniques :** format 4:3 pour les produits, 16:9 pour les bandeaux, 1:1 pour la galerie. JPEG qualité maximale, 4000 px minimum au format long. Pas de filtre, pas de retouche colorée : ImageKit uniformise ensuite. Éviter le soleil de midi.
 
 **Directives d'ambiance :** photographier le travail, pas les objets. Des mains, de la sciure, de la buée, de la boue. Un site trop léché sur ce métier sonne faux — la crédibilité vient de la matière.
+
+
+---
+
+## 9. État d'implémentation — 10 août 2026
+
+**Fait, et fonctionnel dès que les clés seront renseignées.**
+
+| Brique | Fichier |
+|---|---|
+| Transformations nommées | `src/lib/imagekit/transformations.ts` |
+| Construction des URL et `srcSet` | `src/lib/imagekit/index.ts` |
+| Composant unique `<Media />` | `src/components/media.tsx` |
+| Route d'authentification d'upload | `src/app/api/imagekit/auth/route.ts` |
+| Bibliothèque et téléversement | `/admin/medias` |
+
+### Aucune dépendance ajoutée
+
+Le format d'URL d'ImageKit est `<endpoint>/<chemin>?tr=<transformation>` ; la signature d'upload est `HMAC-SHA1(token + expire, clé privée)`. Les deux sont documentés et stables. Les implémenter coûte une trentaine de lignes et évite d'embarquer un SDK client dans le bundle pour concaténer une chaîne. Le jour où l'on veut le SDK officiel, `<Media />` est le seul point à changer.
+
+### Pas de `next/image` sur un média ImageKit
+
+L'optimiseur de Next re-téléchargerait et retraiterait une image qu'ImageKit a déjà servie au bon format et à la bonne taille : on paierait deux fois le même travail, et on perdrait `f-auto`. `<Media />` rend donc un `<img>` avec `srcSet`, dimensions réservées et LQIP. C'est le **seul** `<img>` autorisé du projet, et la règle est portée par un `eslint-disable` commenté.
+
+### Dégradation sans compte ImageKit
+
+Le compte n'est pas encore ouvert et les trois variables sont vides. Conséquences, toutes visibles et aucune bloquante :
+
+- `<Media />` affiche un cadre neutre au bon ratio, sans erreur ;
+- `/admin/medias` explique en clair quelles variables renseigner ;
+- la route d'authentification répond `503` avec le même message ;
+- la galerie publique annonce que les photos arrivent, plutôt que d'afficher des images de banque d'images en les faisant passer pour l'entreprise.
+
+### Ce qui reste à faire
+
+1. **Ouvrir le compte ImageKit** et renseigner les trois variables d'environnement.
+2. **Suppression réelle des fichiers** : `/admin/medias` retire le média de la bibliothèque mais laisse le fichier chez ImageKit. Un fichier orphelin coûte moins cher qu'une image effacée par erreur ; le ménage se fait depuis leur console en attendant.
+3. **Sélecteur de média dans la fiche produit** : la bibliothèque existe, le rattachement `product_media` se fait encore en base.
+4. Widget Media Library embarqué — lot 2, comme prévu au §4.4.

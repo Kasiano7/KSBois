@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Truck, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { estimerLivraison, type ResultatEstimation } from "@/server/actions/estimation";
-import { formatEuros, formatVolume } from "@/domain/units";
+import { formatDistance, formatEuros, formatVolume } from "@/domain/units";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -131,7 +131,7 @@ function Reponse({
           <CheckCircle2 size={20} strokeWidth={1.9} className="text-succes" aria-hidden="true" />
           Oui, nous livrons {resultat.ville}
           {resultat.distanceKm !== null && (
-            <span className="text-cendre font-normal">· {resultat.distanceKm} km</span>
+            <span className="text-cendre font-normal">· {formatDistance(resultat.distanceKm)}</span>
           )}
         </p>
         <p className="text-cendre mt-2 text-[15px] leading-relaxed">
@@ -159,7 +159,11 @@ function Reponse({
     resultat.statut === "hors_zone"
       ? `Nous ne livrons pas encore ${resultat.ville}`
       : resultat.statut === "inconnu"
-        ? `Nous ne connaissons pas le code postal ${resultat.codePostal}`
+        ? resultat.raison === "inexistant"
+          // Le code postal n'existe pas en France : c'est une faute de frappe,
+          // et le dire fait gagner du temps au visiteur.
+          ? `Le code postal ${resultat.codePostal} n'existe pas`
+          : "Nous n'avons pas pu vérifier votre commune"
         : resultat.statut === "sur_devis"
           ? "Votre commune demande un devis"
           : "Une erreur est survenue";
@@ -167,7 +171,11 @@ function Reponse({
   const texte =
     resultat.statut === "erreur"
       ? resultat.message
-      : "Nous étudions toutes les demandes, en particulier pour les volumes importants. Dites-nous ce qu'il vous faut.";
+      : resultat.statut === "inconnu" && resultat.raison === "inexistant"
+        ? "Vérifiez votre saisie : aucune commune française ne porte ce code postal."
+        : resultat.statut === "inconnu"
+          ? "Notre vérification automatique est momentanément indisponible. Envoyez-nous votre demande, nous vous répondons avec le tarif exact."
+          : "Nous étudions toutes les demandes, en particulier pour les volumes importants. Dites-nous ce qu'il vous faut.";
 
   return (
     <div className="border-alerte/30 bg-alerte/8 mt-5 rounded-[6px] border p-4">
@@ -176,11 +184,14 @@ function Reponse({
         {titre}
       </p>
       <p className="text-cendre mt-2 text-[15px] leading-relaxed">{texte}</p>
-      {resultat.statut !== "erreur" && (
-        <Button asChild variant="outline" size="lg" className="mt-3">
-          <Link href="/devis">Demander un devis</Link>
-        </Button>
-      )}
+      {/* Sur une faute de frappe, proposer un devis serait absurde : le
+          visiteur doit corriger sa saisie, pas nous écrire. */}
+      {resultat.statut !== "erreur" &&
+        !(resultat.statut === "inconnu" && resultat.raison === "inexistant") && (
+          <Button asChild variant="outline" size="lg" className="mt-3">
+            <Link href="/devis">Demander un devis</Link>
+          </Button>
+        )}
     </div>
   );
 }

@@ -25,7 +25,13 @@ export type ModeleEmail =
   | "livraison_effectuee"
   | "devis_recu"
   | "devis_propose"
-  | "devis_alerte_interne";
+  | "devis_alerte_interne"
+  /** Récapitulatif du matin, à l'exploitant. */
+  | "recap_quotidien"
+  /** Stock sous le seuil, à l'exploitant. Une fois par jour au maximum. */
+  | "alerte_stock"
+  /** Invitation à rejoindre l'administration. */
+  | "invitation_equipe";
 
 export interface PieceJointe {
   nomFichier: string;

@@ -324,7 +324,13 @@ export async function testerAdresse(entree: unknown): Promise<ResultatTest> {
   const resolution = await resolveZone(tenant.id, codePostal, ville);
 
   if (resolution.status === "unknown") {
-    return { ok: false, message: `Le code postal ${codePostal} n'est pas dans votre liste.` };
+    return {
+      ok: false,
+      message:
+        resolution.raison === "inexistant"
+          ? `Le code postal ${codePostal} n'existe pas en France.`
+          : `Impossible de vérifier ${codePostal} : la base officielle des communes n'a pas répondu.`,
+    };
   }
   if (resolution.status === "ambiguous") {
     return {
@@ -337,7 +343,12 @@ export async function testerAdresse(entree: unknown): Promise<ResultatTest> {
   if (resolution.status === "not_served") {
     return {
       ok: false,
-      message: `${resolution.commune.city} n'est pas desservie : le client sera orienté vers le formulaire de devis.`,
+      // On distingue les deux cas : « pas encore ajoutée » se règle en un clic
+      // avec le scan de secteur, « marquée non desservie » est une décision.
+      message:
+        resolution.commune.origine === "france"
+          ? `${resolution.commune.city} n'est pas dans votre liste (environ ${resolution.commune.distanceKm ?? "?"} km). Le client verra « nous ne livrons pas encore ${resolution.commune.city} » et sera orienté vers le devis.`
+          : `${resolution.commune.city} est marquée non desservie : le client sera orienté vers le formulaire de devis.`,
     };
   }
 

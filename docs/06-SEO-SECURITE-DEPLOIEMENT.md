@@ -93,6 +93,27 @@ Création et optimisation du Google Business Profile (catégorie « Fournisseur 
 
 ---
 
+### 1.8 État d'implémentation — 10 août 2026
+
+**Pages livrées.** `/livraison`, `/livraison/[commune]`, `/notre-entreprise`, `/savoir-faire`, `/galerie`, `/guides`, `/guides/[slug]` (4 guides), `/contact`, plus les quatre pages légales `/cgv`, `/mentions-legales`, `/confidentialite`, `/retractation`.
+
+**Socle technique.** `src/lib/seo.ts` construit métadonnées et JSON-LD ; `sitemap.ts` et `robots.ts` sont dynamiques ; le pied de page (`components/site/pied.tsx`) porte le maillage vers les communes et les liens légaux. La fiche `LocalBusiness` est posée **une seule fois, dans le layout `(site)`** : la répéter par page produirait des doublons signalés par Google.
+
+**La règle anti-spam est codée.** `listerCommunesLivrees()` compte les informations propres à chaque commune et bascule la page en `noindex` sous le seuil. Le sitemap n'annonce que les pages indexables — déclarer une page tout en demandant de ne pas l'indexer est un signal contradictoire remonté en erreur.
+
+⚠️ **Deux défauts trouvés en écrivant cette règle, et corrigés :**
+
+1. **« Tarif à 0 € » n'est pas « tarif inconnu ».** La première version comptait la livraison offerte comme une absence d'information, ce qui mettait toute la zone A en `noindex` — exactement l'inverse du but, la gratuité étant l'argument le plus vendeur de la page. Résultat mesuré : 0 commune indexable sur 12.
+2. **Le délai de livraison tombe sur le réglage d'entreprise** (`order.lead_time_days`) quand la zone ne fixe pas le sien. C'est le délai réel, celui qu'annonce déjà le tunnel — pas une valeur inventée pour passer le seuil.
+
+S'y ajoute une condition nécessaire : **sans distance mesurée, la page n'est jamais indexable**, quel que soit le décompte. La distance est le seul fait réellement propre à une commune ; le reste vient de la zone.
+
+Après correction : 12 communes indexables, 25 URL au sitemap.
+
+**Ce qui reste.** Catalogue `/bois-de-chauffage` et fiches produit (le configurateur d'accueil en tient lieu aujourd'hui), `/combien-de-bois`, JSON-LD `Product`/`Offer`, et l'image `ogImage` — qui attend le compte ImageKit. `AggregateRating` reste non publié, faute d'avis Google réels : c'est volontaire (§1.5).
+
+---
+
 ## 2. Sécurité
 
 ### 2.0 Données clients et droit à l'effacement

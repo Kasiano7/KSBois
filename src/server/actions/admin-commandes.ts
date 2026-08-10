@@ -8,6 +8,8 @@ import { requireTenant } from "@/lib/tenant";
 import { uuidLike } from "@/lib/validation";
 import { formatDateCreneau } from "@/server/creneaux";
 import { envoyerEmail } from "@/server/notifications";
+import { emettreFactureCommande } from "@/server/factures";
+import { envoyerLivraisonEffectuee } from "@/server/notifications-exploitation";
 import { LivraisonConfirmee } from "@/emails/livraison-confirmee";
 import {
   ORDER_STATUSES,
@@ -92,6 +94,24 @@ export async function changerStatutCommande(entree: unknown): Promise<ResultatAd
     .eq("id", orderId);
 
   if (error) return { ok: false, message: "Mise à jour impossible." };
+
+  // Facturation automatique à la livraison.
+  //
+  // La livraison est le fait générateur : c'est à ce moment que la vente est
+  // réalisée et que la facture est due. L'émission est idempotente, donc un
+  // passage rejoué ne crée pas de doublon. Elle n'est PAS bloquante : si elle
+  // échoue, la commande reste livrée et le stock reste décrémenté — le gérant
+  // rattrape depuis la fiche commande. Perdre la livraison parce qu'une facture
+  // n'a pas pu s'écrire serait le pire des deux maux.
+  if (nouveauStatut === "livree") {
+    const facturation = await emettreFactureCommande(session.companyId, orderId);
+    if (!facturation.ok) {
+      console.error(`[admin] facture non émise pour ${orderId} : ${facturation.message}`);
+    }
+    // L'email part APRÈS la facture, pour pouvoir la joindre. Il ne bloque pas
+    // davantage : `envoyerLivraisonEffectuee` avale ses propres erreurs.
+    await envoyerLivraisonEffectuee(orderId);
+  }
 
   // Une entrée d'historique par étape franchie : l'historique reste fidèle même
   // quand l'action a emprunté un chemin de deux transitions.

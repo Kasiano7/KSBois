@@ -32,11 +32,47 @@ export interface CommuneAdmin {
   codePostal: string;
   ville: string;
   distanceKm: number | null;
+  /** Une distance estimée doit se voir : c'est elle qui facture le carburant. */
+  sourceDistance: "manuelle" | "route" | "vol_oiseau";
   zoneId: string | null;
   zoneNom: string | null;
   joursLivraison: number[] | null;
   desservie: boolean;
   notes: string | null;
+}
+
+export interface SecteurAdmin {
+  /** Rayon de service en kilomètres de route. */
+  rayonKm: number;
+  dernierScan: string | null;
+  /** Sans point de départ, aucun rayon n'a de sens. */
+  depotRenseigne: boolean;
+  adresse: string | null;
+}
+
+/** Réglages du secteur, pour l'écran « Communes autour du dépôt ». */
+export async function lireSecteur(companyId: string): Promise<SecteurAdmin> {
+  const { data } = await createSupabaseAdminClient()
+    .from("companies")
+    .select("service_radius_km, sector_scanned_at, depot_lat, depot_lng, address_line1, postal_code, city")
+    .eq("id", companyId)
+    .maybeSingle();
+
+  const adresse = [data?.address_line1, data?.postal_code, data?.city]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return {
+    rayonKm: data?.service_radius_km ?? 25,
+    dernierScan: data?.sector_scanned_at ?? null,
+    // Les coordonnées manquantes ne bloquent pas : elles seront déduites de
+    // l'adresse au premier scan. Sans adresse NI coordonnées, en revanche,
+    // l'écran doit le dire avant que l'exploitant ne clique pour rien.
+    depotRenseigne:
+      (data?.depot_lat !== null && data?.depot_lng !== null) || adresse.length > 0,
+    adresse: adresse || null,
+  };
 }
 
 /**
@@ -136,8 +172,8 @@ export async function listerCommunes(companyId: string): Promise<CommuneAdmin[]>
   const { data, error } = await supabase
     .from("zone_communes")
     .select(
-      `id, postal_code, city, distance_km, zone_id, delivery_days, is_served, notes,
-       delivery_zones ( name )`,
+      `id, postal_code, city, distance_km, distance_source, zone_id, delivery_days,
+       is_served, notes, delivery_zones ( name )`,
     )
     .eq("company_id", companyId)
     .order("distance_km", { nullsFirst: false })
@@ -153,6 +189,7 @@ export async function listerCommunes(companyId: string): Promise<CommuneAdmin[]>
     codePostal: c.postal_code,
     ville: c.city,
     distanceKm: c.distance_km === null ? null : Number(c.distance_km),
+    sourceDistance: (c.distance_source ?? "manuelle") as CommuneAdmin["sourceDistance"],
     zoneId: c.zone_id,
     zoneNom: (c.delivery_zones as unknown as { name: string } | null)?.name ?? null,
     joursLivraison: c.delivery_days,

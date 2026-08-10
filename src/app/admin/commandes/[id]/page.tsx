@@ -8,6 +8,8 @@ import { formatDateCreneau } from "@/server/creneaux";
 import { formatEuros, formatVolume } from "@/domain/units";
 import { ORDER_STATUS_LABELS, nextStatuses, type OrderStatus } from "@/domain/orders/state-machine";
 import { ActionsCommande } from "@/components/admin/actions-commande";
+import { DocumentsCommande } from "@/components/admin/documents-commande";
+import { listerFacturesDeCommande } from "@/server/factures";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -52,6 +54,7 @@ export default async function PageCommande({ params }: PageProps<"/admin/command
 
   if (!commande) notFound();
 
+  const factures = await listerFacturesDeCommande(session.companyId, commande.id);
   const statut = commande.status as OrderStatus;
   // Snapshot JSON de l'adresse : on le type une fois ici plutôt que de semer
   // des `String(...)` dans le rendu.
@@ -266,16 +269,31 @@ export default async function PageCommande({ params }: PageProps<"/admin/command
           </section>
         </div>
 
-        <ActionsCommande
-          orderId={commande.id}
-          statut={statut}
-          statutsPossibles={nextStatuses(statut)}
-          totalCents={commande.total_cents}
-          dejaPayeCents={commande.amount_paid_cents}
-          modePaiement={commande.payment_method}
-          dateConfirmee={commande.confirmed_delivery_date}
-          creneauConfirme={commande.confirmed_slot_label}
-        />
+        <div className="space-y-6">
+          <ActionsCommande
+            orderId={commande.id}
+            statut={statut}
+            statutsPossibles={nextStatuses(statut)}
+            totalCents={commande.total_cents}
+            dejaPayeCents={commande.amount_paid_cents}
+            modePaiement={commande.payment_method}
+            dateConfirmee={commande.confirmed_delivery_date}
+            creneauConfirme={commande.confirmed_slot_label}
+          />
+
+          <DocumentsCommande
+            orderId={commande.id}
+            estGerant={session.role === "owner"}
+            livrable={statut !== "annulee"}
+            factures={factures.map((facture) => ({
+              id: facture.id,
+              numero: facture.numero,
+              emiseLe: facture.emiseLe,
+              estAvoir: facture.estAvoir,
+              totalCents: facture.document.totals.totalTtcCents,
+            }))}
+          />
+        </div>
       </div>
     </main>
   );

@@ -188,7 +188,8 @@ Les prix fournis (107 / 104 / 100 €) peuvent signifier deux choses radicalemen
 
 - Colonne `companies.pricing_basis` avec valeurs `'map_delivered' | 'stere_1m_equivalent'`, **défaut `map_delivered`**.
 - Quel que soit le mode, la fiche produit affiche en clair : *« Vous recevrez X m³ apparents de bûches de 33 cm »*. Cette phrase est calculée, jamais saisie à la main.
-- ⚠️ **À confirmer avec le client pilote avant mise en production.** Une erreur ici est une erreur de facturation.
+- ✅ **Tranché le 10 août 2026 : le client choisit lui-même.** Plutôt que de figer A ou B, la base de prix devient un réglage que l'exploitant bascule depuis l'écran **Stock et tarifs** — au m³ apparent livré, ou au stère équivalent 1 m. La colonne `companies.pricing_basis` existe déjà et porte ce choix ; il reste à l'exposer dans l'interface. **Non encore implémenté** (l'écran ne montre pas encore le sélecteur).
+- ⚠️ **Ce choix ne touche QUE l'expression du prix.** L'unité des documents légaux reste le mètre cube apparent, en toutes circonstances : devis, facture, bon de livraison. Le stère n'y figure qu'en équivalence indicative (§3.1 et `docs/03` §11). Une bascule en mode stère ne doit donc jamais changer une facture d'unité.
 
 ### 3.4 Taux d'humidité — argument commercial et champ structuré
 
@@ -230,7 +231,8 @@ Le châtaignier est très présent en Ardèche : il **doit** porter un avertisse
 
 - `vat_rate` est une colonne sur la **variante**, pas une constante globale.
 - `companies.vat_mode` : `'assujetti' | 'franchise_en_base'`. En franchise, tous les documents affichent la mention *« TVA non applicable, article 293 B du CGI »* et aucun montant de TVA.
-- ⚠️ **À faire valider par le comptable du client pilote.** Les taux sont configurables précisément pour cette raison.
+- ✅ **Tranché le 10 août 2026 : réglage manuel, pas de blocage.** Les vendeurs de bois relèvent en pratique du même régime (assujetti à 10 %), et le cas particulier se règle dans **Réglages → Paiement et facturation**, où le régime de TVA et les taux sont déjà éditables. Ce point ne bloque donc plus la mise en vente.
+- ⚠️ **Reste à faire confirmer par le comptable** avant la première déclaration, pas avant la première vente. En franchise en base, la facture porte automatiquement l'article 293 B et n'affiche aucun montant de TVA (`src/domain/invoices`, testé).
 
 ### 3.7 Conformité légale — obligations à implémenter
 

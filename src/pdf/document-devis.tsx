@@ -1,5 +1,13 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View } from "@react-pdf/renderer";
 import { formatEuros, formatVolume, formatStereHintPdf } from "@/domain/units";
+import {
+  EnTeteDocument,
+  EncadreDestinataire,
+  MENTION_STERE,
+  PiedDocument,
+  societeDepuisTenant,
+  styles,
+} from "./commun";
 import type { Tenant } from "@/lib/tenant";
 
 /**
@@ -15,102 +23,9 @@ import type { Tenant } from "@/lib/tenant";
  * par la présentation des lignes ni des totaux : un client qui reçoit les deux
  * doit reconnaître le même document.
  *
- * ⚠️ ENCODAGE : tant que les polices standard sont utilisées, tout caractère
- * hors WinAnsi est remplacé SILENCIEUSEMENT par un autre glyphe — « ≈ » sortait
- * en « H ». Aucun caractère exotique dans ce fichier (voir
- * `tests/unit/pdf-encodage.test.ts`).
+ * Les blocs partagés avec la facture et le bon de livraison vivent dans
+ * `commun.tsx` — y compris la règle d'encodage WinAnsi.
  */
-
-const couleurs = {
-  encre: "#14100D",
-  cendre: "#6E6459",
-  bord: "#DFD9CD",
-  braise: "#A83F12",
-  sapin: "#22392C",
-  fondAlerte: "#FBF3EE",
-};
-
-const styles = StyleSheet.create({
-  page: {
-    paddingTop: 40,
-    paddingBottom: 56,
-    paddingHorizontal: 44,
-    fontSize: 10,
-    color: couleurs.encre,
-  },
-  enTete: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  nomEntreprise: { fontSize: 17, fontWeight: 700, color: couleurs.sapin },
-  petit: { fontSize: 8.5, color: couleurs.cendre, lineHeight: 1.5 },
-  titre: { fontSize: 22, fontWeight: 700, marginTop: 26 },
-  sousTitre: { fontSize: 9.5, color: couleurs.cendre, marginTop: 4 },
-  section: { marginTop: 22 },
-  sectionTitre: {
-    fontSize: 8,
-    fontWeight: 700,
-    letterSpacing: 1.1,
-    color: couleurs.cendre,
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
-  encadreClient: {
-    borderWidth: 0.5,
-    borderColor: couleurs.bord,
-    padding: 12,
-    marginTop: 18,
-    maxWidth: 260,
-    marginLeft: "auto",
-  },
-  ligneEnTete: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: couleurs.encre,
-    paddingBottom: 5,
-  },
-  ligne: {
-    flexDirection: "row",
-    borderBottomWidth: 0.5,
-    borderBottomColor: couleurs.bord,
-    paddingVertical: 7,
-  },
-  colDesignation: { flex: 1 },
-  colQte: { width: 88, textAlign: "right" },
-  colPu: { width: 76, textAlign: "right" },
-  colTotal: { width: 76, textAlign: "right" },
-  gras: { fontWeight: 700 },
-  totaux: { marginTop: 14, marginLeft: "auto", width: 250 },
-  ligneTotal: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
-  ligneTotalFinal: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderTopWidth: 1,
-    borderTopColor: couleurs.encre,
-    marginTop: 6,
-    paddingTop: 7,
-  },
-  montantFinal: { fontSize: 15, fontWeight: 700, color: couleurs.braise },
-  avertissement: {
-    marginTop: 26,
-    borderWidth: 1,
-    borderColor: couleurs.braise,
-    backgroundColor: couleurs.fondAlerte,
-    padding: 12,
-  },
-  avertissementTitre: { fontSize: 10, fontWeight: 700, color: couleurs.braise, marginBottom: 5 },
-  avertissementTexte: { fontSize: 8.5, lineHeight: 1.55, color: couleurs.encre },
-  message: { marginTop: 20, fontSize: 9.5, lineHeight: 1.6 },
-  pied: {
-    position: "absolute",
-    bottom: 28,
-    left: 44,
-    right: 44,
-    fontSize: 7.5,
-    color: couleurs.cendre,
-    textAlign: "center",
-    borderTopWidth: 0.5,
-    borderTopColor: couleurs.bord,
-    paddingTop: 8,
-  },
-});
 
 export interface LigneDocument {
   cle: string;
@@ -193,43 +108,15 @@ export function DocumentDevis({
       creator={tenant.name}
     >
       <Page size="A4" style={styles.page}>
-        <View style={styles.enTete}>
-          <View>
-            <Text style={styles.nomEntreprise}>{tenant.name}</Text>
-            <Text style={styles.petit}>
-              {[tenant.postalCode, tenant.city].filter(Boolean).join(" ")}
-              {"\n"}
-              {tenant.phoneDisplay ?? tenant.phone ?? ""}
-              {tenant.phoneDisplay || tenant.phone ? "\n" : ""}
-              {tenant.email}
-            </Text>
-          </View>
-          <View>
-            <Text style={[styles.petit, { textAlign: "right" }]}>
-              Devis n° {reference}
-              {"\n"}
-              Édité le {editeLe}
-            </Text>
-          </View>
-        </View>
+        <EnTeteDocument
+          societe={societeDepuisTenant(tenant)}
+          lignesDroite={[`Devis n° ${reference}`, `Édité le ${editeLe}`]}
+        />
 
         <Text style={styles.titre}>{titre}</Text>
         <Text style={styles.sousTitre}>{sousTitre}</Text>
 
-        {client && (
-          <View style={styles.encadreClient}>
-            <Text style={styles.sectionTitre}>Destinataire</Text>
-            <Text style={styles.gras}>{client.societe || client.nom}</Text>
-            {client.societe && <Text>{client.nom}</Text>}
-            {client.adresse && <Text>{client.adresse}</Text>}
-            {client.codePostalVille && <Text>{client.codePostalVille}</Text>}
-            {(client.telephone || client.email) && (
-              <Text style={[styles.petit, { marginTop: 4 }]}>
-                {[client.telephone, client.email].filter(Boolean).join("\n")}
-              </Text>
-            )}
-          </View>
-        )}
+        {client && <EncadreDestinataire client={client} />}
 
         {livraison?.commune && (
           <View style={styles.section}>
@@ -353,22 +240,17 @@ export function DocumentDevis({
 
         {message && <Text style={styles.message}>{message}</Text>}
 
-        <View style={styles.avertissement}>
-          <Text style={styles.avertissementTitre}>{encadre.titre}</Text>
-          <Text style={styles.avertissementTexte}>{encadre.texte}</Text>
+        <View style={styles.encadre}>
+          <Text style={styles.encadreTitre}>{encadre.titre}</Text>
+          <Text style={styles.encadreTexte}>{encadre.texte}</Text>
           {encadre.complement && (
-            <Text style={[styles.avertissementTexte, { marginTop: 6, fontWeight: 700 }]}>
+            <Text style={[styles.encadreTexte, { marginTop: 6, fontWeight: 700 }]}>
               {encadre.complement}
             </Text>
           )}
         </View>
 
-        <Text style={styles.pied} fixed>
-          {tenant.name}
-          {" — "}
-          Le stère n&apos;est plus une unité légale de mesure depuis 1977 : les quantités sont
-          exprimées en mètres cubes apparents. La mention « stère » est donnée à titre indicatif.
-        </Text>
+        <PiedDocument texte={`${tenant.name} — ${MENTION_STERE}`} />
       </Page>
     </Document>
   );

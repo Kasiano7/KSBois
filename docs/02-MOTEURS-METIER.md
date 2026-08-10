@@ -72,17 +72,53 @@ C'est le composant le plus différenciant du produit. Il répond à trois questi
 ```
 entrée : postal_code, city (ou insee_code)
 1. Chercher dans zone_communes (company_id, postal_code, city)
-   → correspondance exacte prioritaire
-2. Si absent, chercher par postal_code seul
-   → si plusieurs communes, demander à l'utilisateur de choisir sa commune
-3. Si is_served = false ou aucune correspondance :
-   → retour { served: false } → bascule vers le parcours DEVIS (§7)
-4. Sinon retour { zone, distance_km, delivery_days }
+   → correspondance sur le nom normalisé (sans accent, casse ni ponctuation)
+   → trouvée : on répond ici, sans aucun appel réseau (cas le plus fréquent)
+2. Sinon, interroger la BASE OFFICIELLE pour ce code postal (geo.api.gouv.fr)
+   → union { communes de la liste } ∪ { communes réelles du code postal }
+3. Plusieurs communes → demander laquelle, en les proposant TOUTES
+4. Commune identifiée mais hors liste ou is_served = false :
+   → { not_served, commune } → bascule vers le parcours DEVIS (§7)
+5. Aucune commune nommable :
+   → { unknown, raison: inexistant | source_indisponible }
+6. Sinon retour { zone, distance_km, delivery_days }
 ```
+
+**La liste de l'exploitant ne fait pas autorité sur la géographie française.** Un code postal absent de sa liste reste un code postal réel : le site doit pouvoir écrire « nous ne livrons pas encore **Peaugres** — demandez un devis » plutôt que « code postal inconnu ». La première phrase amène une demande de devis, la seconde se lit comme un bug et le visiteur s'en va.
+
+Conséquence directe sur la levée d'ambiguïté : 07340 couvre **seize** communes réelles. N'en proposer que les deux que l'on connaît obligerait un habitant de Peaugres à se déclarer à Serrières — et à recevoir la distance, donc le tarif, de Serrières.
+
+`raison` n'est pas un détail de journalisation : annoncer « ce code postal n'existe pas » alors que c'est notre source qui est muette fait douter le client de sa propre adresse. Source injoignable → on le dit et on propose un devis ; code postal réellement inexistant → on invite à corriger la saisie, sans proposer de devis.
 
 **Point UX critique :** ce contrôle intervient **dès le panier**, pas au paiement. Un client qui découvre au moment de payer qu'on ne le livre pas est un client perdu et énervé. Le panier affiche un champ « Votre code postal » et calcule les frais en direct.
 
-**Alimentation de `zone_communes` :** import initial depuis la base officielle des communes (code INSEE + code postal), filtré sur un rayon autour du dépôt. L'admin voit ensuite une liste triable « Commune → Zone → Distance → Jours » et affecte les communes en masse. C'est l'écran d'administration le plus important à soigner.
+**Alimentation de `zone_communes` — scan par rayon.** L'exploitant décrit son métier (« je pars de Villevocance, je livre à 25 km ») et le système déduit la liste. La saisie manuelle reste possible, mais elle n'est plus le mode normal : une liste tenue à la main est longue à établir et surtout **incomplète**, et une commune oubliée est un client qui lit « nous ne livrons pas chez vous » alors que le camion passe devant sa porte.
+
+```
+entrée : dépôt (companies.depot_lat/lng), rayon en km de ROUTE
+1. Départements candidats — table statique (centre + rayon de couverture)
+   → interroger la France entière coûterait 4,8 Mo et ~25 s
+2. geo.api.gouv.fr/communes?codeDepartement=… (nom, INSEE, codes postaux, centre)
+3. Pré-filtre à vol d'oiseau au rayon demandé
+   → filtre EXACT : une route n'est jamais plus courte que le vol d'oiseau
+4. Distances routières réelles — OSRM, service `table`, par lots de 90
+   → en échec : vol d'oiseau × 1,3, marqué `vol_oiseau` et signalé à l'écran
+5. Écarter les communes au-delà du rayon PAR LA ROUTE, et les compter
+6. Suggérer une zone : couronne dont la distance indicative est la plus proche
+   → au-delà de la dernière couronne : aucune zone (l'exploitant tranche)
+7. Restitution à l'écran — AUCUNE écriture
+8. Import explicite → import_sector_communes(company_id, jsonb)
+```
+
+**Une commune = une ligne par code postal.** Beaucoup de communes en portent plusieurs ; n'en retenir qu'un est exactement ce qui fait échouer la résolution de zone pour la moitié des habitants (constaté sur 07690 / 07100 / 07340 d'une liste saisie à la main).
+
+**Garde-fous de l'import** (fonction SQL, donc atomique) :
+
+- une `distance_km` saisie à la main n'est **jamais** écrasée — `distance_source` en garde la trace ;
+- le rattachement à une zone et les communes fermées sont préservés ;
+- les valeurs venues du navigateur sont recoupées avec la base officielle avant écriture, et la distance est bornée par la géométrie : elle alimente la surcharge carburant, donc une facture (§2.3).
+
+L'admin voit ensuite une liste triable « Commune → Zone → Distance → Jours » et affecte les communes en masse. C'est l'écran d'administration le plus important à soigner.
 
 ### 2.2 Sélection du véhicule
 
@@ -425,6 +461,81 @@ Formulaire pour les cas hors standard : gros volumes, professionnels, hors zone,
 
 ---
 
+## 7 bis. Factures, avoirs et bons de livraison — implémenté le 10 août 2026
+
+### 7 bis.1 Trois documents, deux natures
+
+| Document | Numéroté | Persisté | Qui l'édite | Rôle |
+|---|---|---|---|---|
+| **Facture** | `FAC-AAAA-NNNN`, séquence légale | Oui, `invoices` | Automatique à la livraison ; manuellement, le gérant | Pièce comptable |
+| **Avoir** | Même séquence que les factures | Oui, lié à sa facture | Le gérant seul | Annulation d'une facture |
+| **Bon de livraison** | Non — porte la référence de la **commande** | Non | `owner`, `staff` et `driver` | Document de terrain |
+
+### 7 bis.2 Une facture est un instantané, jamais une vue
+
+`invoices` stocke le document **entier** en JSON (`seller`, `buyer`, `lines`, `totals`, `vat_breakdown`), et le PDF est rendu depuis ce contenu figé. Il ne relit ni la commande, ni le catalogue, ni les réglages du moment.
+
+C'est ce qui garantit qu'une facture rééditée deux ans plus tard sort **identique**, même si les prix ont bougé, si la raison sociale a changé ou si le taux de TVA a été révisé. C'est aussi ce qui prépare Factur-X : le format attend des données structurées, pas un PDF à reparser.
+
+### 7 bis.3 Ce qui n'est jamais fait
+
+- **On ne modifie pas une facture émise. On ne la supprime pas.** La correction passe par un avoir, qui porte son propre numéro et référence la facture annulée. La numérotation reste ainsi continue et sans lacune — la seule forme acceptable en contrôle.
+- **On n'émet pas si le document ne se boucle pas.** `construireFacture()` vérifie que lignes + options − remise + livraison retombe **exactement** sur le total de la commande, et refuse sinon (`FactureIncoherenteError`). Une option oubliée dans la requête produirait sinon une facture inférieure à ce que le client a payé, et personne ne s'en apercevrait avant le bilan. L'écran affiche alors les deux montants et invite à vérifier la commande.
+- **On n'invente pas de TVA.** La ventilation vient de `orders.vat_breakdown`, figée à la commande : la facture montre la TVA que le client a réellement payée. En franchise en base, elle est vide, le HT vaut le TTC, et l'article 293 B s'affiche.
+
+### 7 bis.4 Émission automatique à la livraison
+
+Le passage à `livree` émet la facture : la livraison est le fait générateur de la TVA sur une livraison de biens, et c'est à ce moment que la facture est due.
+
+Deux garde-fous :
+
+- **L'émission est idempotente.** Un passage rejoué, un double clic, deux onglets : une seule facture.
+- **Elle n'est pas bloquante.** Si elle échoue, la commande reste livrée et le stock reste décrémenté ; l'erreur est journalisée et le gérant rattrape depuis la fiche commande. Perdre une livraison parce qu'une facture n'a pas pu s'écrire serait le pire des deux maux.
+
+⚠️ **L'unicité est garantie par la BASE, pas par le code.** La vérification applicative « existe-t-elle déjà ? » suivie d'une insertion est un lire-puis-écrire, que `PLAN.md` (règle 5) interdit pour la numérotation : deux appels concurrents passaient tous les deux et consommaient deux numéros. Deux index partiels ferment la course (migration `20260810120000`) :
+
+```sql
+create unique index invoices_une_facture_par_commande on invoices (order_id) where is_credit_note = false;
+create unique index invoices_un_avoir_par_facture     on invoices (parent_invoice_id) where parent_invoice_id is not null;
+```
+
+Sur violation (`23505`), le code relit et retourne le document déjà émis : l'appelant voulait une facture, elle existe.
+
+### 7 bis.5 Mentions portées par la facture
+
+Identification du vendeur (SIRET, RCS, APE, TVA intracommunautaire), identité de l'acheteur avec son SIRET s'il est professionnel, prix unitaire **hors taxe** par ligne (art. 242 nonies A du CGI, reconstitué depuis le TTC et figé à l'émission), ventilation de TVA par taux, total HT / TVA / TTC, déjà réglé et reste à payer.
+
+Les mentions varient selon l'acheteur, et c'est testé :
+
+| Cas | Mentions ajoutées |
+|---|---|
+| Client professionnel | Pénalités de retard au taux annuel + **indemnité forfaitaire de 40 €** (art. D441-5 c. com.) · échéance à 30 jours (art. L441-10) |
+| Client particulier | « Paiement comptant à la livraison » · échéance = date de vente |
+| Franchise en base | « TVA non applicable, article 293 B du CGI » |
+
+### 7 bis.6 Le bon de livraison n'est pas une facture
+
+Trois partis pris, tous dictés par l'usage réel :
+
+1. **Aucun prix de vente — sauf le reste à encaisser**, en gros caractères. Le livreur doit savoir ce qu'il rapporte le soir ; c'est ce qui évite le client qui croyait avoir déjà tout payé (§6).
+2. **La colonne « quantité livrée » est vide, à remplir au stylo.** Un chargement ne tombe jamais exactement juste ; pré-remplir la case, c'est obtenir une signature sur un chiffre que personne n'a vérifié.
+3. **Pas de séquence propre.** Une séquence obligerait à persister chaque bon pour éviter les trous, et une réimpression — le cas le plus fréquent, l'exemplaire restant dans le camion — produirait un second numéro pour la même livraison. Ici, réimprimer redonne **exactement** le même document.
+
+Il porte en revanche les **contraintes d'accès** du client, en braise : c'est la ligne la plus utile de la page pour le chauffeur.
+
+### 7 bis.7 Accès aux documents
+
+| Route | Qui |
+|---|---|
+| `GET /api/pdf/facture/[id]` | Membre de l'entreprise, **ou** client connecté propriétaire de la commande |
+| `GET /api/pdf/bon-livraison/[id]` (id = commande) | `owner`, `staff`, `driver` |
+
+Un invité non connecté n'accède pas à une facture, même avec son identifiant : le document porte un nom et une adresse. Vérifié : 403 sans session.
+
+Les factures apparaissent sur la fiche commande de l'administration, sur la fiche client, et dans l'espace client sous « Vos documents ».
+
+---
+
 ## 8. Promotions
 
 ```
@@ -486,6 +597,36 @@ Le bouton « Créer mon compte en 1 clic » est un lien magique pré-authentifi�
 > [ Ouvrir la tournée du jour ]
 
 Un seul email, tôt le matin, avec un bouton qui ouvre directement la feuille de tournée. C'est le point d'entrée quotidien de l'exploitant dans l'outil.
+
+---
+
+## 9 bis. Notifications — les quatre derniers modèles (10 août 2026)
+
+La matrice §9.1 est désormais complète côté email. Quatre modèles se sont ajoutés, avec deux tâches planifiées.
+
+| Modèle | Déclencheur | Destinataire |
+|---|---|---|
+| `rappel_veille` | cron `/api/cron/rappel-veille`, 16 h UTC | Client livré le lendemain |
+| `livraison_effectuee` | passage à « livrée », **facture PDF jointe** | Client |
+| `recap_quotidien` | cron `/api/cron/recap-quotidien`, 5 h UTC | Gérants + copie configurée |
+| `alerte_stock` | avec le récap, une fois par jour au maximum | Gérants + copie configurée |
+| `invitation_equipe` | invitation d'un utilisateur | Personne invitée |
+
+### Ce qui garantit qu'on ne réveille personne deux fois
+
+Chaque envoi programmé vérifie dans `notifications_log` qu'il n'a pas déjà eu lieu **le jour même**, pour cette entreprise et cette commande. Un cron rejoué par la plateforme — cela arrive — ne renvoie rien. Vérifié : le second appel de `/api/cron/rappel-veille` renvoie `ignores: 1`.
+
+### Trois décisions
+
+- **La facture est jointe depuis son instantané**, exactement comme la route de téléchargement : le PDF reçu par email et le PDF téléchargé sont le même document. Les faire diverger serait indéfendable en litige. Si le rendu échoue, l'email part quand même en annonçant que la facture suit — le client doit savoir que sa livraison est faite.
+- **L'alerte de stock part avec le récap, pas à chaque commande.** Une alerte qui arrive dix fois par jour n'est plus lue au bout d'une semaine. Elle annonce une **date de rupture** calculée par `projeterStock` — la même projection que l'écran statistiques, pour que l'email et l'écran ne se contredisent jamais.
+- **Le récap est une feuille de route, pas un tableau de bord.** Chaque bloc répond à « qu'est-ce que je fais ? » : ce qu'il y a à charger, ce qu'il faut encaisser, ce qui attend une décision, et les contraintes d'accès. Aucun indicateur de pilotage — ils sont dans l'écran statistiques.
+
+⚠️ **Vercel planifie en UTC.** Pour un envoi à 7 h heure de Paris, il faudrait `0 5 * * *` en été et `0 6 * * *` en hiver. On retient 5 h UTC : en hiver le message arrive à 6 h, en avance plutôt qu'en retard. Le réglage `notifications.digest_time` reste un affichage, pas une planification.
+
+Le contrôle d'accès des crons est mutualisé dans `src/lib/cron.ts` : à cinq tâches, cinq copies du même test devenaient un risque d'en oublier une. En production, seul l'en-tête `Authorization: Bearer` est accepté — le secret en paramètre d'URL finit dans les journaux d'accès.
+
+**Dix tests rendent les quatre modèles pour de vrai** et relisent leur texte : un email est aussi invisible qu'un PDF avant d'arriver chez un client.
 
 ---
 

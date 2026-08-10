@@ -60,7 +60,7 @@ npm run verify
 **✅ Fait**
 
 - Fiche produit : règle de coupe (échelle réelle), jauge d'humidité mesurée, sélecteur de quantité, prix en direct avec paliers dégressifs, encart pédagogique m³ apparent / stère
-- Moteurs métier `src/domain/` : prix, paliers, TVA multi-taux, unités, zones, sélection de véhicule, surcharge carburant plafonnée, minimums de zone — **227 tests unitaires** sur l'ensemble du domaine et des services purs
+- Moteurs métier `src/domain/` : prix, paliers, TVA multi-taux, unités, zones, sélection de véhicule, surcharge carburant plafonnée, minimums de zone — **284 tests unitaires** sur l'ensemble du domaine et des services purs
 - Panier serveur (cookie httpOnly, tables sans privilège client), revalidation des prix et du stock à chaque lecture, divergences signalées et jamais corrigées en silence
 - Vérification de zone **dès le panier**, levée d'ambiguïté quand un code postal couvre plusieurs communes, jours de livraison par commune
 - Calcul de livraison bout en bout : zone → véhicule → carburant → arrondi, avec les quatre sorties de secours (hors zone, code postal inconnu, volume hors flotte, frais hors norme)
@@ -97,15 +97,23 @@ npm run verify
 
 - **Écran clients** (`/admin/clients` et `/admin/clients/[id]`) : recherche instantanée nom/email/téléphone/commune, filtres fidélité/professionnels/blocage, CA réel, export CSV sûr, fiche avec coordonnées, adresses et contraintes d'accès, commandes, factures, notes, rythme d'achat et prochaine commande estimée. Préparation d'une commande préremplie, blocage motivé appliqué côté serveur, fusion atomique des doublons et anonymisation RGPD auditée.
 
+- **Factures, avoirs et bons de livraison (10 août 2026)** : facture émise automatiquement au passage en « livrée », idempotente et non bloquante ; instantané complet stocké en JSON dans `invoices` et jamais recalculé à l'affichage ; refus d'émettre si le détail ne retombe pas au centime sur le total encaissé ; correction par **avoir** uniquement, la numérotation restant continue ; mentions légales complètes et variables selon particulier / professionnel / franchise en base ; **double facturation rendue impossible par deux index partiels** (migration `20260810120000`) plutôt que par une vérification applicative. Bon de livraison sans prix mais avec le reste à encaisser en gros, les contraintes d'accès et une colonne « quantité livrée » à remplir à la main ; réimprimable à l'identique. Mise en page commune extraite dans `src/pdf/commun.tsx` et partagée avec le devis. Documents accessibles depuis la fiche commande, la fiche client et l'espace client. **13 tests rendent les PDF pour de vrai et relisent leur texte** — un document PDF n'est vérifiable ni à l'œil dans un navigateur ni par le DOM (`docs/02` §7 bis)
+
+- **Fin du lot 1 (10 août 2026)** — quatre chantiers livrés d'un bloc :
+  - **Notifications complètes** : rappel la veille, livraison effectuée avec facture jointe, récap quotidien du matin, alerte de stock avec date de rupture, invitation d'équipe. Deux crons ajoutés, contrôle d'accès mutualisé dans `lib/cron.ts`. Chaque envoi programmé est idempotent au jour près (`docs/02` §9 bis)
+  - **ImageKit** : transformations nommées, composant unique `<Media />`, route d'authentification d'upload signée avec limitation de débit, **sans ajouter de dépendance**. Dégradation complète et explicite tant que le compte n'est pas ouvert (`docs/04` §9)
+  - **Médias et utilisateurs** : `/admin/medias` avec téléversement direct navigateur → ImageKit et texte alternatif obligatoire ; gestion des rôles et invitations dans les réglages, avec deux garde-fous vérifiés — au moins un gérant, et personne ne se retire soi-même (`docs/05`)
+  - **Pages de contenu et SEO local** : douze pages publiques dont les quatre pages légales, `sitemap.ts` et `robots.ts` dynamiques, JSON-LD `LocalBusiness`/`BreadcrumbList`/`FAQPage`/`Service`/`Article`, pied de page avec maillage vers les communes. **La règle anti-spam des pages communes est codée**, pas laissée à la discipline (`docs/06` §1.8)
+
 **⏳ Reste à faire sur le lot 1**
 
-- Modèles d'email restants : rappel la veille, livraison effectuée avec facture, récap quotidien
+- ~~Modèles d'email restants~~ ✅ **fait** (voir ci-dessus)
 - **`STRIPE_WEBHOOK_SECRET` à obtenir** : le webhook est écrit, signé et idempotent, mais inactif sans son secret. En local : `stripe listen --forward-to localhost:3000/api/webhooks/stripe`. En production : créer le point de terminaison dans le tableau de bord Stripe. En attendant, le paiement aboutit par la **vérification directe** auprès de l'API Stripe après confirmation — pas par le navigateur
 - **Domaine à vérifier chez Resend** : sans domaine vérifié, `onboarding@resend.dev` ne peut écrire qu'au titulaire du compte. Aucun client réel ne recevra d'email avant cette étape (+ SPF/DKIM/DMARC)
 - Administration : **dashboard, commandes, tournée du jour, stock et tarifs, clients, zones de livraison, créneaux, devis, statistiques et réglages ✅ faits**.
-- Factures PDF et bons de livraison (le devis PDF sert de modèle : `src/pdf/devis.tsx`)
-- Pages contenu et SEO local, pages légales
-- ImageKit et composant `<Media />`
+- ~~Factures PDF et bons de livraison~~ ✅ **fait** (voir ci-dessus)
+- ~~Pages contenu et SEO local, pages légales~~ ✅ **fait**. Restent le catalogue `/bois-de-chauffage`, les fiches produit et `/combien-de-bois` (`docs/06` §1.8)
+- ~~ImageKit et composant `<Media />`~~ ✅ **fait**. ⚠️ **Le compte ImageKit reste à ouvrir** : sans les trois variables d'environnement, les emplacements d'images affichent un cadre neutre
 - ~~Cron carburant~~ ✅ **fait** : relevé quotidien sur l'open data officiel (`data.economie.gouv.fr`), médiane départementale après élimination des valeurs aberrantes, contrôle de sanité à 15 %, relevés refusés conservés et acceptables en un clic, saisie manuelle et relance immédiate. `vercel.json` planifie le passage à 10 h heure de Paris
 
 **Dettes ouvertes**

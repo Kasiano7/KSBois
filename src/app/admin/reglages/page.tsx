@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { Building2, Palette, ShoppingCart, CreditCard, Bell, SlidersHorizontal } from "lucide-react";
+import { Building2, Palette, ShoppingCart, CreditCard, Bell, SlidersHorizontal, Users } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { getOrderSettings, getPaymentSettings, getRangementSettings, getRawSettings } from "@/server/reglages";
+import { listerInvitations, listerMembres } from "@/server/membres";
+import { PanneauUtilisateurs } from "@/components/admin/panneau-utilisateurs";
 import {
   enregistrerApparence,
   enregistrerCommandes,
@@ -157,6 +159,10 @@ export default async function PageReglages({ searchParams }: PageProps<"/admin/r
     getPaymentSettings(session.companyId),
     getRangementSettings(session.companyId),
   ]);
+  const [membres, invitations] = await Promise.all([
+    listerMembres(session.companyId, session.userId),
+    listerInvitations(session.companyId),
+  ]);
   const entreprise = entrepriseResult.data;
   if (!entreprise) throw new Error("Entreprise introuvable.");
   const theme = themeResult.data;
@@ -182,6 +188,7 @@ export default async function PageReglages({ searchParams }: PageProps<"/admin/r
         {[
           ["entreprise", "Entreprise"], ["apparence", "Nom et logo"], ["commandes", "Commandes"],
           ["paiement", "Paiement"], ["notifications", "Notifications"], ["fonctionnalites", "Fonctionnalités"],
+          ["utilisateurs", "Utilisateurs"],
         ].map(([id, libelle]) => (
           <a key={id} href={`#${id}`} className="border-ecorce-bord bg-ecorce-eleve hover:bg-ecorce flex min-h-11 items-center rounded-[4px] border px-4 text-[15px] font-semibold">
             {libelle}
@@ -293,6 +300,23 @@ export default async function PageReglages({ searchParams }: PageProps<"/admin/r
             ))}
           </div>
         </Carte>
+
+        {/* Hors <Carte> : ce panneau n'est pas un formulaire à enregistrer mais
+            une suite d'actions immédiates, chacune confirmée séparément. */}
+        <section id="utilisateurs" className="border-ecorce-bord bg-ecorce-eleve scroll-mt-5 rounded-[8px] border p-5 sm:p-6">
+          <div className="flex items-start gap-3">
+            <Users className="text-seve mt-0.5 shrink-0" size={23} strokeWidth={1.8} aria-hidden="true" />
+            <div>
+              <h2 className="text-[22px]">Utilisateurs de l’entreprise</h2>
+              <p className="text-cendre-clair mt-1 max-w-[74ch] text-[15px] leading-relaxed">
+                Qui peut ouvrir l’administration, et jusqu’où. Donner un accès, c’est donner accès au chiffre d’affaires et aux clients.
+              </p>
+            </div>
+          </div>
+          <div className="mt-6">
+            <PanneauUtilisateurs membres={membres} invitations={invitations} />
+          </div>
+        </section>
       </div>
     </main>
   );

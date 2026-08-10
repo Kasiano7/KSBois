@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { Truck, Droplets, MapPin, Leaf, ShieldCheck, Star, Users } from "lucide-react";
 import { ChoixBois } from "@/components/produit/choix-bois";
@@ -5,7 +6,23 @@ import { BandeauLivraison } from "@/components/produit/bandeau-livraison";
 import { getTenant } from "@/lib/tenant";
 import { listProducts } from "@/server/catalogue";
 import { getContexteLivraison } from "@/server/livraison-contexte";
+import { metadataPage } from "@/lib/seo";
 import herosBucheron from "@/assets/heros-bucheron.png";
+
+/**
+ * L'accueil est la page la plus visitée et la plus liée : sans canonique
+ * explicite, une variante avec paramètres de campagne (`?utm_source=…`) peut
+ * être indexée à sa place et diluer son autorité.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getTenant();
+  return metadataPage({
+    titre: `Bois de chauffage sec livré${tenant?.city ? ` autour de ${tenant.city}` : " en Ardèche"}`,
+    description:
+      "Bois de chauffage sec, coupé et livré en Ardèche nord. Chêne, hêtre et charme en 25, 33, 40 et 50 cm. Humidité mesurée, prix livré affiché avant commande.",
+    chemin: "/",
+  });
+}
 
 export default async function Accueil() {
   const tenant = await getTenant();

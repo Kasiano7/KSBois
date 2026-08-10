@@ -166,9 +166,16 @@ export default async function PageClient({ params }: PageProps<"/admin/clients/[
             ) : (
               <ul className="divide-ecorce-bord mt-4 divide-y">
                 {detail.factures.map((facture) => (
-                  <li key={facture.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                    <span><strong className="font-mono text-[14px]">{facture.numero}</strong><span className="text-cendre-clair ml-2 text-[13px]">{facture.avoir ? "Avoir" : "Facture"} · {formatDate.format(new Date(`${facture.emiseLe}T12:00:00Z`))}</span></span>
-                    <span className="tabulaire font-semibold">{facture.totalCents === null ? "Montant archivé" : formatEuros(facture.totalCents)}</span>
+                  <li key={facture.id}>
+                    <a
+                      href={`/api/pdf/facture/${facture.id}`}
+                      target="_blank"
+                      rel="noopener"
+                      className="hover:bg-ecorce-eleve -mx-2 flex min-h-14 flex-wrap items-center justify-between gap-3 rounded-[8px] px-2 py-3 transition-colors"
+                    >
+                      <span><strong className="font-mono text-[14px]">{facture.numero}</strong><span className="text-cendre-clair ml-2 text-[13px]">{facture.avoir ? "Avoir" : "Facture"} · {formatDate.format(new Date(`${facture.emiseLe}T12:00:00Z`))} · PDF</span></span>
+                      <span className="tabulaire font-semibold">{facture.totalCents === null ? "Montant archivé" : formatEuros(facture.totalCents)}</span>
+                    </a>
                   </li>
                 ))}
               </ul>

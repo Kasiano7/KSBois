@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { MapPinned, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { testerAdresse, type ResultatTest } from "@/server/actions/admin-zones";
-import { formatEuros, formatVolume } from "@/domain/units";
+import { formatDistance, formatEuros, formatVolume } from "@/domain/units";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -111,7 +111,7 @@ export function TesteurAdresse() {
         <div className="border-succes/30 bg-succes/8 mt-4 rounded-[6px] border p-4">
           <p className="flex flex-wrap items-center gap-2 font-semibold">
             <CheckCircle2 size={19} strokeWidth={1.9} className="text-succes" aria-hidden="true" />
-            {resultat.detail.commune} · {resultat.detail.zone} · {resultat.detail.distanceKm} km
+            {resultat.detail.commune} · {resultat.detail.zone} · {formatDistance(resultat.detail.distanceKm)}
           </p>
 
           <dl className="text-cendre-clair mt-3 space-y-1.5 text-[15px]">
@@ -130,7 +130,7 @@ export function TesteurAdresse() {
             {resultat.detail.carburantCents > 0 && (
               <div className="flex justify-between gap-3">
                 <dt>
-                  Carburant — {resultat.detail.vehicule}, {resultat.detail.distanceKm * 2} km
+                  Carburant — {resultat.detail.vehicule}, {formatDistance(resultat.detail.distanceKm * 2)}
                   aller-retour,{" "}
                   {resultat.detail.litres.toLocaleString("fr-FR")} L à{" "}
                   {(resultat.detail.prixGazoleCents / 100).toLocaleString("fr-FR", {

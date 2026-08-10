@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ReceiptText } from "lucide-react";
 import { requireClient } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant";
-import { getCommandeClient, phraseLivraison } from "@/server/compte";
+import { getCommandeClient, listerFacturesClient, phraseLivraison } from "@/server/compte";
 import { formatEuros, formatVolume } from "@/domain/units";
 import { formatDateFr } from "@/lib/jours";
 import { ORDER_STATUS_LABELS } from "@/domain/orders/state-machine";
@@ -34,6 +34,8 @@ export default async function PageCommandeClient({
   // à rien (docs/01 §4.2).
   const commande = await getCommandeClient(tenant.id, session.customerId, reference);
   if (!commande) notFound();
+
+  const factures = await listerFacturesClient(tenant.id, session.customerId, commande.id);
 
   return (
     <main className="mx-auto w-full max-w-[820px] px-5 py-10 sm:py-14">
@@ -102,6 +104,33 @@ export default async function PageCommandeClient({
           )}
         </p>
       </section>
+
+      {factures.length > 0 && (
+        <section className="border-aubier-bord bg-aubier-pur mt-7 rounded-[14px] border p-5 sm:p-6">
+          <h2 className="text-[21px] font-semibold">Vos documents</h2>
+          <ul className="mt-4 space-y-2">
+            {factures.map((facture) => (
+              <li key={facture.id}>
+                <a
+                  href={`/api/pdf/facture/${facture.id}`}
+                  target="_blank"
+                  rel="noopener"
+                  className="border-aubier-bord hover:bg-aubier flex min-h-14 items-center gap-3 rounded-[8px] border px-4 py-3 text-[17px] transition-colors"
+                >
+                  <ReceiptText size={20} strokeWidth={1.75} className="text-sapin shrink-0" aria-hidden="true" />
+                  <span className="flex-1">
+                    {facture.estAvoir ? "Avoir" : "Facture"}{" "}
+                    <span className="font-mono text-[15px]">{facture.numero}</span>
+                    <span className="text-cendre block text-[15px]">
+                      du {formatDateFr(facture.emiseLe, { jourSemaine: false, annee: true })} — PDF
+                    </span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {commande.statut !== "annulee" && (
         <section className="border-aubier-bord mt-10 rounded-[8px] border border-dashed p-5 sm:p-6">

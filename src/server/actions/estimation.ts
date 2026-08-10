@@ -38,7 +38,12 @@ export type ResultatEstimation =
     }
   | { statut: "ambigu"; choix: { postalCode: string; city: string }[] }
   | { statut: "hors_zone"; ville: string; distanceKm: number | null }
-  | { statut: "inconnu"; codePostal: string }
+  /**
+   * Aucune commune n'a pu être nommée. `raison` distingue le code postal qui
+   * n'existe pas de notre source momentanément muette : les deux appellent des
+   * phrases très différentes côté client.
+   */
+  | { statut: "inconnu"; codePostal: string; raison: "inexistant" | "source_indisponible" }
   | { statut: "sur_devis" }
   | { statut: "erreur"; message: string };
 
@@ -67,7 +72,7 @@ export async function estimerLivraison(entree: unknown): Promise<ResultatEstimat
     return { statut: "ambigu", choix: resolution.choix };
   }
   if (resolution.status === "unknown") {
-    return { statut: "inconnu", codePostal: parsed.data.postalCode };
+    return { statut: "inconnu", codePostal: parsed.data.postalCode, raison: resolution.raison };
   }
   if (resolution.status === "not_served") {
     return {

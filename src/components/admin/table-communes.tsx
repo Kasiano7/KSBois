@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Loader2, Check, Search, Plus, X } from "lucide-react";
 import { affecterCommunes, ajouterCommune } from "@/server/actions/admin-zones";
 import { formatJoursLivraison } from "@/lib/jours";
+import { formatDistance } from "@/domain/units";
 import type { CommuneAdmin, ZoneAdmin } from "@/server/admin-zones";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -323,7 +324,14 @@ export function TableCommunes({
                     {c.distanceKm === null ? (
                       <span className="text-alerte">à renseigner</span>
                     ) : (
-                      `${c.distanceKm.toLocaleString("fr-FR")} km`
+                      <>
+                        {formatDistance(c.distanceKm)}
+                        {/* Distance de repli : le calculateur d'itinéraire
+                            n'avait pas répondu. Elle facture du carburant. */}
+                        {c.sourceDistance === "vol_oiseau" && (
+                          <span className="text-alerte ml-2 text-[13px]">estimée</span>
+                        )}
+                      </>
                     )}
                   </td>
                   <td className="py-3 pr-4">

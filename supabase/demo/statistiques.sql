@@ -70,6 +70,13 @@ begin
                          where company_id = entreprise and campaign = 'demo');
   delete from analytics_sessions where company_id = entreprise and campaign = 'demo';
   delete from quote_requests where company_id = entreprise and reference like 'DEMO-%';
+  -- `invoices.order_id` est en ON DELETE RESTRICT — et c'est voulu : on ne
+  -- supprime pas une commande facturée. Il faut donc retirer les factures de
+  -- démonstration explicitement, avant les commandes qui les portent.
+  delete from invoices
+   where company_id = entreprise
+     and order_id in (select id from orders
+                       where company_id = entreprise and reference like 'DEMO-%');
   -- order_items, order_status_history et payments partent en cascade.
   delete from orders where company_id = entreprise and reference like 'DEMO-%';
 
@@ -155,7 +162,8 @@ begin
         subtotal_cents, discount_cents, delivery_base_cents, delivery_total_cents,
         total_cents, total_volume_m3, payment_method, payment_status,
         amount_paid_cents, promotion_code, fuel_price_snapshot_cents,
-        source, acquisition_source, quote_pdf_before_order, created_at, updated_at
+        source, acquisition_source, quote_pdf_before_order, created_at, updated_at,
+        vat_breakdown
       ) values (
         id_commande, entreprise, 'DEMO-' || lpad(compteur::text, 5, '0'), true, statut,
         'client' || (compteur % 60) || '@demo.test',
@@ -178,7 +186,16 @@ begin
         origine,
         case when graine % 5 = 0 then 'seo' else null end,
         graine % 11 = 0,
-        date_creation, date_creation
+        date_creation, date_creation,
+        -- Ventilation figée comme le fait `computeOrderTotals` : un seul taux
+        -- à 10 %, base TTC = total. Sans elle, les factures de démonstration
+        -- sortiraient avec 0 € de TVA et un HT égal au TTC.
+        jsonb_build_array(jsonb_build_object(
+          'rate', 10,
+          'baseTtcCents', total,
+          'baseHtCents', round(total / 1.1),
+          'vatCents', total - round(total / 1.1)
+        ))
       );
 
       insert into order_items (

@@ -3,6 +3,7 @@ import {
   DEFAULT_STACKING_COEFFICIENTS,
   deliveredVolumeM3,
   formatVolume,
+  formatDistance,
   formatStereHint,
   describeDelivered,
   formatEuros,
@@ -41,6 +42,14 @@ describe("formatage", () => {
     expect(formatVolume(1)).toBe("1 m³ apparent");
     expect(formatVolume(3)).toBe("3 m³ apparents");
     expect(formatVolume(2.5)).toBe("2,5 m³ apparents");
+  });
+
+  it("écrit les distances à la française, virgule comprise", () => {
+    // Les distances issues du scan de secteur portent une décimale : « 7.3 km »
+    // sur une page client jurerait avec le reste du site.
+    expect(formatDistance(7.3)).toBe("7,3 km");
+    expect(formatDistance(12)).toBe("12 km");
+    expect(formatDistance(24.85)).toBe("24,9 km");
   });
 
   it("produit la mention stère en secondaire, dépendante de la coupe", () => {

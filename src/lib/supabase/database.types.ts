@@ -450,6 +450,8 @@ export type Database = {
           postal_code: string | null
           pricing_basis: string
           rcs: string | null
+          sector_scanned_at: string | null
+          service_radius_km: number
           siret: string | null
           slug: string
           timezone: string
@@ -475,6 +477,8 @@ export type Database = {
           postal_code?: string | null
           pricing_basis?: string
           rcs?: string | null
+          sector_scanned_at?: string | null
+          service_radius_km?: number
           siret?: string | null
           slug: string
           timezone?: string
@@ -500,6 +504,8 @@ export type Database = {
           postal_code?: string | null
           pricing_basis?: string
           rcs?: string | null
+          sector_scanned_at?: string | null
+          service_radius_km?: number
           siret?: string | null
           slug?: string
           timezone?: string
@@ -595,6 +601,53 @@ export type Database = {
             foreignKeyName: "company_features_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          company_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          revoked_at: string | null
+          role: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          company_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          revoked_at?: string | null
+          role: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          company_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          revoked_at?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_invitations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
@@ -2722,38 +2775,53 @@ export type Database = {
       }
       zone_communes: {
         Row: {
+          centre_lat: number | null
+          centre_lng: number | null
           city: string
           company_id: string
           delivery_days: number[] | null
           distance_km: number | null
+          distance_source: string
           id: string
+          imported_at: string | null
           insee_code: string | null
           is_served: boolean
           notes: string | null
+          population: number | null
           postal_code: string
           zone_id: string | null
         }
         Insert: {
+          centre_lat?: number | null
+          centre_lng?: number | null
           city: string
           company_id: string
           delivery_days?: number[] | null
           distance_km?: number | null
+          distance_source?: string
           id?: string
+          imported_at?: string | null
           insee_code?: string | null
           is_served?: boolean
           notes?: string | null
+          population?: number | null
           postal_code: string
           zone_id?: string | null
         }
         Update: {
+          centre_lat?: number | null
+          centre_lng?: number | null
           city?: string
           company_id?: string
           delivery_days?: number[] | null
           distance_km?: number | null
+          distance_source?: string
           id?: string
+          imported_at?: string | null
           insee_code?: string | null
           is_served?: boolean
           notes?: string | null
+          population?: number | null
           postal_code?: string
           zone_id?: string | null
         }
@@ -2798,6 +2866,10 @@ export type Database = {
         Args: { p_order_id: string; p_slot_id: string }
         Returns: undefined
       }
+      consommer_invitations: {
+        Args: { p_email: string; p_user_id: string }
+        Returns: number
+      }
       current_customer_id: { Args: { cid: string }; Returns: string }
       generate_delivery_slots: {
         Args: { p_company_id: string; p_horizon_days?: number }
@@ -2808,6 +2880,10 @@ export type Database = {
         Returns: boolean
       }
       is_company_owner: { Args: { cid: string }; Returns: boolean }
+      import_sector_communes: {
+        Args: { p_communes: Json; p_company_id: string }
+        Returns: Json
+      }
       is_company_staff: { Args: { cid: string }; Returns: boolean }
       merge_customers: {
         Args: { p_company_id: string; p_source_id: string; p_target_id: string }

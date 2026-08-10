@@ -44,15 +44,36 @@ export const getSession = cache(async (): Promise<Session | null> => {
   // Lecture par le client d'administration : la RLS sur company_members
   // dépendrait de la session, ce qui rendrait le contrôle circulaire.
   const admin = createSupabaseAdminClient();
-  const [{ data: membre }, { data: profil }] = await Promise.all([
+  const lireMembre = async () =>
     admin
       .from("company_members")
       .select("role")
       .eq("company_id", tenant.id)
       .eq("user_id", user.id)
-      .maybeSingle(),
+      .maybeSingle();
+
+  const [membreInitial, { data: profil }] = await Promise.all([
+    lireMembre(),
     admin.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
   ]);
+
+  let membre = membreInitial.data;
+
+  // Première connexion d'une personne invitée : l'invitation se transforme en
+  // adhésion ici, sur l'email VÉRIFIÉ par Supabase Auth. Se fier à une adresse
+  // saisie permettrait de réclamer l'invitation d'un tiers — même raisonnement
+  // que le rattachement des commandes invité (docs/03 §6.4).
+  if (!membre && user.email) {
+    const { error } = await admin.rpc("consommer_invitations", {
+      p_user_id: user.id,
+      p_email: user.email,
+    });
+    if (error) {
+      console.error("[auth] consommation des invitations :", error.message);
+    } else {
+      ({ data: membre } = await lireMembre());
+    }
+  }
 
   if (!membre) return null;
 

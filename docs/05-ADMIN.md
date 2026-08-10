@@ -186,6 +186,21 @@ Deux vues du même objet.
 
 Un bouton **« Tester une adresse »** est présent en haut : on saisit un code postal et un volume, l'écran affiche le résultat exact que verrait un client (zone, véhicule retenu, détail des frais, jours disponibles). C'est l'outil qui donne confiance à l'exploitant dans le système.
 
+**Panneau « Communes autour du dépôt »** — c'est lui qui remplit la vue Communes, et non la saisie manuelle (moteur : docs/02 §2.1).
+
+L'exploitant saisit un rayon en **kilomètres de route** et clique sur *Analyser le secteur*. L'écran propose alors la liste des communes officielles à portée, avec leur distance routière mesurée et une zone déduite de la distance. Rien n'est écrit avant que l'exploitant n'ait relu la liste et cliqué sur *Importer* : l'analyse et l'import sont deux gestes distincts.
+
+Ce que l'écran doit dire, et qu'il serait tentant de taire :
+
+| Situation | Affichage |
+|---|---|
+| Commune déjà connue | « déjà dans votre liste », zone actuelle **conservée** |
+| Distance de repli (routeur muet) | mention « estimée », en `--alerte`, jusque dans le tableau des communes |
+| Commune proche à vol d'oiseau mais loin par la route | comptée et annoncée (« 104 communes écartées ») |
+| Commune desservie hors du nouveau rayon | listée, **jamais supprimée** |
+
+Un import ne défait jamais un réglage : distance saisie à la main, rattachement de zone et communes volontairement fermées sont préservés. Sans cette garantie, personne ne relancerait un scan après six mois d'ajustements.
+
 ### 6.2 `/admin/livraison/creneaux` — ✅ fait
 
 Gestion des modèles récurrents (jour, horaires, capacité en nombre **et** en volume, véhicule, zones concernées) et calendrier des 8 prochaines semaines avec le taux de remplissage de chaque créneau (`4/8 livraisons · 12/20 m³`).
@@ -327,3 +342,33 @@ consommés par l'application sans exposer de secret au navigateur.
 Cloche dans l'en-tête admin avec badge. Événements : nouvelle commande, demande de devis, paiement reçu, échec de paiement, stock sous le seuil, anomalie de prix carburant. Clic → écran concerné. Marquage lu/non lu, conservation 30 jours.
 
 C'est le complément indispensable du récap quotidien par email : le récap donne le rythme, la cloche capte l'imprévu.
+
+
+---
+
+## Médias et utilisateurs — 10 août 2026
+
+### `/admin/medias`
+
+Bibliothèque avec téléversement direct navigateur → ImageKit (le fichier ne transite pas par Vercel), glisser-déposer multiple, filtres par dossier, recherche sur le nom **et** la description, édition en ligne du texte alternatif.
+
+Le texte alternatif est **exigé pour publier**, et son absence est signalée en rouge sur la vignette — volontairement inconfortable : une image sans description est inaccessible aux personnes malvoyantes et invisible pour Google. La galerie publique filtre ces images plutôt que de les afficher sans `alt`.
+
+La suppression refuse si le média est utilisé par un produit : supprimer à l'aveugle laisserait une fiche sans photo, sans que personne s'en aperçoive avant qu'un client tombe dessus.
+
+### Utilisateurs, dans `/admin/reglages`
+
+Trois rôles, chacun **décrit en toutes lettres** à côté de son nom : « Secrétariat » ne dit pas si la personne verra les factures, la phrase si.
+
+Invitation par email, sans lien d'acceptation : l'accès s'ouvre à la première connexion, sur l'email **vérifié par Supabase Auth** (fonction `consommer_invitations`, migration `20260810160000`). Un lien d'acceptation serait une clé d'accès à l'administration circulant dans une boîte mail ; se fier à une adresse saisie permettrait de réclamer l'invitation d'un tiers — même raisonnement que le rattachement des commandes invité.
+
+⚠️ **Deux garde-fous, vérifiés en conditions réelles :**
+
+1. l'entreprise conserve toujours au moins un gérant ;
+2. personne ne peut se retirer soi-même — seul un autre gérant le peut, ce qui laisse une trace et un responsable.
+
+Sans eux, un gérant peut se rétrograder et rendre réglages, facturation et gestion des utilisateurs définitivement inaccessibles : il faudrait repasser par la base.
+
+### Piège payé deux fois
+
+Un module `"use server"` ne peut exporter que des **fonctions asynchrones**, et un composant client ne peut pas importer une valeur d'un module `server-only`. Dans les deux cas le typecheck passe et l'écran plante au premier affichage. Le vocabulaire partagé vit donc dans `lib/` : `lib/medias.ts` (dossiers), `lib/roles.ts` (rôles), `lib/slug.ts` (slugs — qui était en prime intestable tant qu'il restait derrière `server-only`).

@@ -34,9 +34,19 @@ async function nombreArticlesPanier(): Promise<number> {
   return count ?? 0;
 }
 
+/**
+ * Navigation publique.
+ *
+ * Elle est passée de trois à cinq entrées le 10 août 2026, les pages de contenu
+ * existant désormais réellement. La règle de docs/05 §1 tient toujours : on
+ * n'inscrit ici que des pages qui existent — un lien mort vaut moins qu'un menu
+ * court. « À propos » et « Conseils » pointent donc vers les vraies routes.
+ */
 const LIENS = [
   { href: "/#commander", libelle: "Bois de chauffage" },
-  { href: "/#livraison", libelle: "Livraison" },
+  { href: "/livraison", libelle: "Livraison" },
+  { href: "/savoir-faire", libelle: "Savoir-faire" },
+  { href: "/guides", libelle: "Guides" },
   { href: "/devis", libelle: "Devis sur mesure" },
 ];
 

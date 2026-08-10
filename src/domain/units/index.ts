@@ -80,6 +80,20 @@ export function formatVolume(m3: M3Apparent): string {
 }
 
 /**
+ * Formatage canonique d'une distance routière.
+ *
+ * Depuis le scan de secteur (docs/02 §2.1), les distances portent une décimale :
+ * un « 7.3 km » à l'anglaise sur une page client jurerait avec le reste du site,
+ * où tout est en virgule décimale.
+ *
+ * @example formatDistance(7.3) → "7,3 km"
+ * @example formatDistance(12)  → "12 km"
+ */
+export function formatDistance(km: number): string {
+  return `${km.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} km`;
+}
+
+/**
  * Équivalent en stères de bois de 1 m d'un volume apparent livré à une longueur
  * donnée.
  *

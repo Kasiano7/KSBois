@@ -134,6 +134,50 @@ export async function getCommandeClient(
   return data ? versCommande(data as unknown as Record<string, unknown>) : null;
 }
 
+export interface FactureClient {
+  id: string;
+  numero: string;
+  emiseLe: string;
+  estAvoir: boolean;
+}
+
+/**
+ * Factures et avoirs d'une commande du client.
+ *
+ * Le filtrage passe par la commande, elle-même déjà filtrée sur le client de la
+ * session : on ne cherche jamais une facture par son seul identifiant.
+ */
+export async function listerFacturesClient(
+  companyId: string,
+  customerId: string,
+  orderId: string,
+): Promise<FactureClient[]> {
+  const supabase = createSupabaseAdminClient();
+
+  const { data: commande } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("customer_id", customerId)
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!commande) return [];
+
+  const { data } = await supabase
+    .from("invoices")
+    .select("id, number, issued_at, is_credit_note")
+    .eq("company_id", companyId)
+    .eq("order_id", orderId)
+    .order("issued_at", { ascending: true });
+
+  return (data ?? []).map((facture) => ({
+    id: facture.id,
+    numero: facture.number,
+    emiseLe: facture.issued_at,
+    estAvoir: facture.is_credit_note,
+  }));
+}
+
 /** Chiffres du client, calculés à la lecture plutôt que stockés. */
 export function resumerClient(commandes: CommandeClient[]): ResumeClient {
   const utiles = commandes.filter((c) => c.statut !== "annulee");

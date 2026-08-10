@@ -7,6 +7,7 @@ import {
   ChartNoAxesCombined,
   ClipboardList,
   FileText,
+  Images,
   LayoutDashboard,
   MapPin,
   Package,
@@ -56,6 +57,7 @@ const GROUPES = [
     titre: "Entreprise",
     entrees: [
       { href: "/admin/stock", libelle: "Stock et tarifs", Icone: Package },
+      { href: "/admin/medias", libelle: "Médias", Icone: Images },
       { href: "/admin/reglages", libelle: "Réglages", Icone: Settings },
     ],
   },

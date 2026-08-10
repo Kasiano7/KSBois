@@ -1,7 +1,12 @@
 import { headers } from "next/headers";
 import { getTenant } from "@/lib/tenant";
 import { EN_TETE_CHEMIN } from "@/proxy";
+import { listerCommunesLivrees } from "@/server/contenu";
+import { jsonldEntreprise } from "@/lib/seo";
+import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { EnteteSite } from "@/components/site/entete";
+import { PiedSite } from "@/components/site/pied";
+import { DonneesStructurees } from "@/components/site/donnees-structurees";
 
 /**
  * Layout du registre public — docs/01-ARCHITECTURE.md §2
@@ -27,14 +32,52 @@ export default async function LayoutSite({ children }: LayoutProps<"/">) {
   // passerait par-dessus au premier défilement.
   const espaceAvecSaBarre = chemin.startsWith("/compte");
 
+  const [communes, { data: entreprise }] = await Promise.all([
+    listerCommunesLivrees(tenant.id),
+    createSupabaseAdminClient()
+      .from("companies")
+      .select("address_line1, depot_lat, depot_lng")
+      .eq("id", tenant.id)
+      .maybeSingle(),
+  ]);
+
+  // La fiche établissement est posée une seule fois, dans le layout : elle vaut
+  // pour toutes les pages publiques, et la répéter par page produirait des
+  // doublons que Google signale (docs/06 §1.5).
+  const fiche = jsonldEntreprise(tenant, {
+    adresse: {
+      rue: entreprise?.address_line1 ?? null,
+      codePostal: tenant.postalCode,
+      ville: tenant.city,
+    },
+    latitude: entreprise?.depot_lat ?? null,
+    longitude: entreprise?.depot_lng ?? null,
+    communesDesservies: communes.map((commune) => commune.ville),
+  });
+
+  // Le tunnel de commande n'a ni pied de page ni maillage : à cette étape, la
+  // seule action utile est de finir la commande (docs/03 §6.3).
+  const dansLeTunnel = chemin.startsWith("/commande") || chemin.startsWith("/panier");
+
   return (
     <>
+      <DonneesStructurees data={fiche} />
       <EnteteSite
         tenant={tenant}
         variante={chemin === "/" ? "surimpression" : "pleine"}
         collante={!espaceAvecSaBarre}
       />
       {children}
+      {!dansLeTunnel && (
+        <PiedSite
+          tenant={tenant}
+          communes={communes.map((commune) => ({
+            slug: commune.slug,
+            ville: commune.ville,
+            indexable: commune.indexable,
+          }))}
+        />
+      )}
     </>
   );
 }

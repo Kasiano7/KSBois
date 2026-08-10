@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Truck, AlertTriangle, Info, CheckCircle2 } from "lucide-react";
-import { formatEuros, formatVolume } from "@/domain/units";
+import { formatDistance, formatEuros, formatVolume } from "@/domain/units";
 import type { LivraisonResume } from "@/server/panier";
 import { Button } from "@/components/ui/button";
 
@@ -62,11 +62,18 @@ export function RecapLivraison({ livraison }: { livraison: LivraisonResume }) {
   }
 
   if (resolution.status === "unknown") {
-    return (
-      <Encadre ton="alerte" titre={`Nous ne connaissons pas le code postal ${resolution.postalCode}`}>
+    // Deux situations très différentes, deux phrases différentes. Dire « code
+    // postal inconnu » à quelqu'un dont le code postal existe le fait douter de
+    // notre sérieux et il s'en va sans demander de devis.
+    return resolution.raison === "inexistant" ? (
+      <Encadre ton="alerte" titre={`Le code postal ${resolution.postalCode} n'existe pas`}>
+        <p>Vérifiez votre saisie : aucune commune française ne porte ce code postal.</p>
+      </Encadre>
+    ) : (
+      <Encadre ton="alerte" titre="Nous n'avons pas pu vérifier votre commune">
         <p>
-          Il est peut-être hors de notre secteur habituel, mais nous étudions toutes les demandes —
-          notamment pour les volumes importants.
+          Notre vérification automatique est momentanément indisponible. Envoyez-nous votre demande :
+          nous vous répondons avec le tarif exact.
         </p>
         <BoutonDevis />
       </Encadre>
@@ -87,11 +94,11 @@ export function RecapLivraison({ livraison }: { livraison: LivraisonResume }) {
       <Encadre ton="alerte" titre={`Nous ne livrons pas encore ${resolution.commune.city}`}>
         <p>
           {resolution.commune.distanceKm
-            ? `Votre commune est à environ ${resolution.commune.distanceKm} km de notre dépôt, au-delà de notre secteur de livraison régulier. `
+            ? `Votre commune est à environ ${formatDistance(resolution.commune.distanceKm)} de notre dépôt, au-delà de notre secteur de livraison régulier. `
             : ""}
           Faites-nous une demande : selon la quantité, un déplacement peut rester intéressant.
         </p>
-        <BoutonDevis />
+        <BoutonDevis libelle={`Demander un devis pour ${resolution.commune.city}`} />
       </Encadre>
     );
   }
@@ -156,7 +163,7 @@ export function RecapLivraison({ livraison }: { livraison: LivraisonResume }) {
         <Truck size={20} strokeWidth={1.75} className="text-sapin" aria-hidden="true" />
         Livraison à {commune.city}
         {commune.distanceKm !== null && (
-          <span className="text-cendre font-normal">· {commune.distanceKm} km</span>
+          <span className="text-cendre font-normal">· {formatDistance(commune.distanceKm)}</span>
         )}
       </p>
       <p className="text-cendre mt-1 text-[15px]">{zone.name}</p>

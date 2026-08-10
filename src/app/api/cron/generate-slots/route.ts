@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
+import { cronAutorise } from "@/lib/cron";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { getOrderSettings } from "@/server/reglages";
 
@@ -20,21 +21,8 @@ import { getOrderSettings } from "@/server/reglages";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function autorise(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-
-  const entete = request.headers.get("authorization");
-  if (entete === `Bearer ${secret}`) return true;
-
-  // Déclenchement manuel en développement, pour tester sans attendre lundi.
-  return (
-    process.env.NODE_ENV !== "production" && request.nextUrl.searchParams.get("secret") === secret
-  );
-}
-
 export async function GET(request: NextRequest) {
-  if (!autorise(request)) {
+  if (!cronAutorise(request)) {
     return Response.json({ erreur: "Non autorisé." }, { status: 401 });
   }
 

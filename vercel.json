@@ -13,6 +13,14 @@
     {
       "path": "/api/cron/purge-analytics",
       "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/cron/recap-quotidien",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/rappel-veille",
+      "schedule": "0 16 * * *"
     }
   ]
 }

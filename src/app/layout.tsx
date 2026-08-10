@@ -3,6 +3,7 @@ import { Fraunces, Archivo, IBM_Plex_Mono } from "next/font/google";
 import { getTenant, themeToCss } from "@/lib/tenant";
 import { cn } from "@/lib/utils";
 import { SuiviParcours } from "@/components/analytics/suivi-parcours";
+import { PreconnexionImagekit } from "@/components/media";
 import "./globals.css";
 
 // ⚠️ shadcn init avait ajouté Geist et redéfini --font-sans. Retiré : la police
@@ -64,9 +65,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       )}
     >
       <head>
-        {process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT && (
-          <link rel="preconnect" href={process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT} />
-        )}
+        <PreconnexionImagekit />
         {themeCss && <style>{themeCss}</style>}
       </head>
       <body className="flex min-h-full flex-col">
