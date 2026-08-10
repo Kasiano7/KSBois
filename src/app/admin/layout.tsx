@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LogOut, TreePine } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { requireTenant } from "@/lib/tenant";
@@ -25,7 +26,11 @@ export default async function LayoutAdmin({ children }: LayoutProps<"/admin">) {
   return (
     <div className="registre-admin dark bg-ecorce text-aubier flex min-h-full flex-1 flex-col lg:flex-row">
       <aside className="border-ecorce-bord bg-ecorce-eleve flex flex-col border-b lg:h-dvh lg:w-[264px] lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-b-0 lg:sticky lg:top-0">
-        <div className="border-ecorce-bord flex items-center gap-3 border-b px-5 py-4">
+        <Link
+          href="/"
+          aria-label={`Retour à l'accueil de ${tenant.name}`}
+          className="border-ecorce-bord hover:bg-aubier/5 focus-visible:ring-seve flex items-center gap-3 border-b px-5 py-4 transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
+        >
           <span
             className="bg-seve/15 text-seve flex size-10 shrink-0 items-center justify-center rounded-[10px]"
             aria-hidden="true"
@@ -36,7 +41,7 @@ export default async function LayoutAdmin({ children }: LayoutProps<"/admin">) {
             <p className="font-display truncate text-[18px] leading-tight">{tenant.name}</p>
             <p className="text-cendre-clair text-[12px]">Administration</p>
           </div>
-        </div>
+        </Link>
 
         <NavigationAdmin />
 

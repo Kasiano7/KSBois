@@ -354,7 +354,7 @@ Le client a fourni une maquette de l'accueil. Elle a été suivie pour la **mise
 
 **Généralisation au registre public (fait).** Les routes publiques vivent désormais dans le groupe `(site)` — `page.tsx`, `panier`, `commande`, `devis`, `compte`, `connexion` — dont le layout appose l'en-tête. Le groupe n'ajoute aucun segment d'URL : les chemins sont inchangés.
 
-L'en-tête a deux variantes, et **la marque ramène toujours à l'accueil** : c'est la sortie de secours d'une audience qui n'utilise pas le bouton « précédent ».
+L'en-tête a deux variantes, et **la marque ramène toujours à l'accueil** : c'est la sortie de secours d'une audience qui n'utilise pas le bouton « précédent ». Lorsqu'un membre `owner` ou `staff` est connecté, un bouton « Administration » apparaît dans les actions de l'en-tête public ; il n'est jamais rendu pour un client ou un visiteur anonyme.
 
 | Variante | Où | Rendu |
 |---|---|---|
@@ -426,6 +426,8 @@ Le client a fourni un visuel de l'administration : **sidebar et fond en vert tr�
 ### Navigation
 
 Dix liens à plat obligeaient à relire la liste entière. Ils sont **groupés** en Pilotage · Ventes · Livraison · Entreprise, avec l'écran courant en pastille sève. Sur mobile, une seule rangée qui défile, sans titres de groupe. `src/components/admin/navigation-admin.tsx` est le **seul composant client** de la coquille, et uniquement pour lire `usePathname()`.
+
+La marque en haut à gauche de la barre latérale est un lien explicite vers `/`. Le gérant peut donc passer du site à l'administration et revenir à l'accueil sans modifier manuellement l'adresse.
 
 L'écran actif est celui dont le chemin correspondant est **le plus long** : sinon `/admin` reste allumé partout.
 

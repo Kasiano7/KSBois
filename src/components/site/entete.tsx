@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { TreePine, User, ShoppingCart } from "lucide-react";
+import { LayoutDashboard, TreePine, User, ShoppingCart } from "lucide-react";
+import { getSession, peutVoirAdmin } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { getCartId } from "@/server/panier";
 import { cn } from "@/lib/utils";
@@ -57,8 +58,9 @@ export async function EnteteSite({
    */
   collante?: boolean;
 }) {
-  const articles = await nombreArticlesPanier();
+  const [articles, session] = await Promise.all([nombreArticlesPanier(), getSession()]);
   const surimpression = variante === "surimpression";
+  const accesAdmin = session ? peutVoirAdmin(session.role) : false;
 
   return (
     <header
@@ -112,6 +114,18 @@ export async function EnteteSite({
 
         {/* ── Actions ── */}
         <div className="ml-auto flex items-center gap-1.5">
+          {accesAdmin && (
+            <Link
+              href="/admin"
+              aria-label="Ouvrir l'administration"
+              className="bg-seve text-encre hover:bg-seve/90 flex h-11 items-center gap-2 rounded-[4px] px-3 text-[14px] font-semibold transition-colors sm:px-4"
+            >
+              <LayoutDashboard size={20} strokeWidth={1.75} aria-hidden="true" />
+              <span className="hidden xl:inline">Administration</span>
+              <span className="hidden sm:inline xl:hidden">Admin</span>
+            </Link>
+          )}
+
           <Link
             href="/compte"
             aria-label="Mon espace client"
