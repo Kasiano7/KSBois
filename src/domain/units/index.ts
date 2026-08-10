@@ -177,6 +177,25 @@ export function formatEuros(cents: number): string {
 }
 
 /**
+ * Montant abrégé — **graduations d'axe et étiquettes de graphique uniquement**.
+ *
+ * Jamais sur un prix, un total, une facture ou un devis : « 1,2 k€ » n'est pas
+ * une somme, c'est un repère de lecture. Le montant exact reste affiché en
+ * toutes lettres à côté de chaque courbe (docs/03 §11).
+ */
+export function formatEurosCompact(cents: number): string {
+  const euros = cents / 100;
+  const absolu = Math.abs(euros);
+  if (absolu >= 1_000_000) {
+    return `${(euros / 1_000_000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} M€`;
+  }
+  if (absolu >= 1_000) {
+    return `${(euros / 1_000).toLocaleString("fr-FR", { maximumFractionDigits: absolu >= 10_000 ? 0 : 1 })} k€`;
+  }
+  return `${Math.round(euros).toLocaleString("fr-FR")} €`;
+}
+
+/**
  * Vérifie qu'une quantité respecte les bornes et le pas de la variante.
  * Retourne `null` si valide, sinon un message destiné à l'utilisateur.
  */

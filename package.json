@@ -15,6 +15,7 @@
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local --schema public > src/lib/supabase/database.types.ts",
     "db:test": "docker exec -i supabase_db_bois-chauffage psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -f - < supabase/tests/rls_isolation.sql",
+    "db:demo": "docker exec -i supabase_db_bois-chauffage psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -f - < supabase/demo/statistiques.sql",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run db:test"
   },
   "dependencies": {

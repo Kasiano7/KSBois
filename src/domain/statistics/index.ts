@@ -98,3 +98,116 @@ export function evolutionPourcent(valeur: number, precedente: number): number | 
   if (precedente <= 0) return null;
   return Math.round(((valeur - precedente) / precedente) * 10_000) / 100;
 }
+
+/* ==========================================================================
+   Séries temporelles — la matière des courbes de l'administration.
+
+   Le pas de temps n'est pas choisi par l'exploitant : il découle de la durée
+   affichée. Une courbe de 365 points quotidiens est illisible sur un écran
+   d'ordinateur portable, et une courbe de 4 points mensuels sur 30 jours ne
+   dit rien. On agrège donc, et on l'écrit sous le graphique.
+   ========================================================================== */
+
+export type Granularite = "jour" | "semaine" | "mois";
+
+/** Nombre de segments au-delà duquel une courbe devient un aplat de bruit. */
+const MAX_POINTS_SERIE = 400;
+
+export function choisirGranularite(debut: Date, fin: Date): Granularite {
+  const jours = (fin.getTime() - debut.getTime()) / JOUR_MS;
+  if (jours <= 45) return "jour";
+  if (jours <= 200) return "semaine";
+  return "mois";
+}
+
+/** Début du seau contenant `date` : minuit UTC, lundi UTC, ou 1er du mois UTC. */
+export function debutDeSeau(date: Date, granularite: Granularite): Date {
+  const jour = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+  if (granularite === "jour") return jour;
+  if (granularite === "mois") {
+    return new Date(Date.UTC(jour.getUTCFullYear(), jour.getUTCMonth(), 1));
+  }
+  // Semaine ISO : elle commence le lundi. getUTCDay() met dimanche à 0.
+  const decalage = (jour.getUTCDay() + 6) % 7;
+  return new Date(jour.getTime() - decalage * JOUR_MS);
+}
+
+export function seauSuivant(debut: Date, granularite: Granularite): Date {
+  if (granularite === "mois") {
+    return new Date(Date.UTC(debut.getUTCFullYear(), debut.getUTCMonth() + 1, 1));
+  }
+  return new Date(debut.getTime() + (granularite === "jour" ? 1 : 7) * JOUR_MS);
+}
+
+export interface PointSerie {
+  /** Début du seau, en ISO — sert de clé React et d'ancre pour les libellés. */
+  cle: string;
+  commandes: number;
+  caCents: number;
+  volumeM3: number;
+}
+
+/**
+ * Agrège des commandes en une série régulière, **trous compris**.
+ *
+ * Les seaux vides valent zéro et ne sont pas omis : une semaine sans vente est
+ * une information, et une courbe qui saute par-dessus la ment par omission.
+ */
+export function agregerSerie(
+  points: ReadonlyArray<{ dateIso: string; caCents: number; volumeM3: number }>,
+  debut: Date,
+  fin: Date,
+  granularite: Granularite,
+): PointSerie[] {
+  if (!(debut.getTime() < fin.getTime())) return [];
+
+  const seaux = new Map<string, PointSerie>();
+  for (
+    let curseur = debutDeSeau(debut, granularite);
+    curseur.getTime() < fin.getTime() && seaux.size < MAX_POINTS_SERIE;
+    curseur = seauSuivant(curseur, granularite)
+  ) {
+    seaux.set(curseur.toISOString(), {
+      cle: curseur.toISOString(),
+      commandes: 0,
+      caCents: 0,
+      volumeM3: 0,
+    });
+  }
+
+  for (const point of points) {
+    const date = new Date(point.dateIso);
+    if (Number.isNaN(date.getTime())) continue;
+    const seau = seaux.get(debutDeSeau(date, granularite).toISOString());
+    if (!seau) continue;
+    seau.commandes += 1;
+    seau.caCents += point.caCents;
+    seau.volumeM3 += point.volumeM3;
+  }
+
+  return [...seaux.values()].map((seau) => ({
+    ...seau,
+    volumeM3: Math.round(seau.volumeM3 * 1000) / 1000,
+  }));
+}
+
+/**
+ * Moyenne mobile centrée — la courbe de tendance posée sur les valeurs brutes.
+ *
+ * Centrée et non glissante vers l'arrière : on regarde le passé, pas une
+ * prévision. Une moyenne à retard décalerait visuellement les pics d'une
+ * demi-fenêtre, ce qui ferait mentir la lecture « la hausse a commencé là ».
+ * Les bords utilisent la fenêtre disponible plutôt que de disparaître.
+ */
+export function moyenneMobile(valeurs: readonly number[], fenetre: number): number[] {
+  const rayon = Math.max(0, Math.floor((fenetre - 1) / 2));
+  if (rayon === 0) return [...valeurs];
+  return valeurs.map((_, index) => {
+    const debut = Math.max(0, index - rayon);
+    const fin = Math.min(valeurs.length, index + rayon + 1);
+    const tranche = valeurs.slice(debut, fin);
+    return tranche.reduce((somme, valeur) => somme + valeur, 0) / tranche.length;
+  });
+}

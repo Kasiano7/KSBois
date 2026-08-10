@@ -346,7 +346,8 @@ Le client a fourni une maquette de l'accueil. Elle a été suivie pour la **mise
 |---|---|---|
 | Bouton « Valider ma sélection » en `--seve` | **Accepté**, contre la règle §2.1 qui réserve la sève aux badges et les CTA à la braise | Demande explicite du client sur la maquette. La braise reste l'accent du prix : l'écran ne porte donc pas deux accents concurrents |
 | Texte du bouton or | `--encre`, pas blanc | Blanc sur sève ne donne que 2:1 de contraste. Encre sur sève dépasse 9:1 et reste fidèle au visuel |
-| Fond du héros | Dégradé, **pas de photo** | Le compte ImageKit n'est pas ouvert et la recette interdit tout bouche-trou en production (`docs/07`). La photo du shooting se posera en `<img>` plein cadre sous le voile, sans autre changement |
+| Fond du héros | Photo fournie par le client, servie en local par `next/image` | ImageKit n'est toujours pas ouvert : l'image vit dans `src/assets/`. À basculer sur ImageKit quand le compte existera (`docs/04`) |
+| État sélectionné, partout | Vert sapin : carte pleine sur l'accueil, cadre `--sapin` + fond `sapin/8` dans le tunnel (créneau, paiement) | L'orange ne marque plus jamais une sélection. Un seul idiome sur tout le parcours, au lieu de deux |
 | Navigation | Trois liens (« Bois de chauffage », « Livraison », « Devis sur mesure ») au lieu des six de la maquette | « À propos », « Conseils » et « Contact » n'existent pas encore. Un lien mort vaut moins qu'un menu court (docs/05 §1) |
 | Textes et chiffres | Ceux du site, pas ceux de la maquette | La maquette est une image générée : elle écrit « m² » au lieu de m³ apparents, « Esseness sfiectionnées », et un prix inventé de 125 €. L'unité légale et les prix réels priment (`PLAN.md` §3.1) |
 | Deux boutons d'ajout | Conservés (« Ajouter au panier » près du produit, « Valider ma sélection » dans le récapitulatif) | Conformes à la maquette, et les deux appellent **la même** fonction : aucune divergence possible |
@@ -362,11 +363,71 @@ L'en-tête a deux variantes, et **la marque ramène toujours à l'accueil** : c'
 
 ⚠️ **Un layout ne reçoit pas le chemin demandé.** `src/proxy.ts` le dépose dans l'en-tête `x-chemin`, que le layout lit pour choisir la variante. Sans ce détour, il aurait fallu dupliquer le layout dans deux groupes de routes imbriqués.
 
-**Photo du héros (fait).** `src/assets/heros-bucheron.png`, servie par `next/image` en `fill` + `priority` + `placeholder="blur"`. Deux voiles de lisibilité, et c'est volontaire : uniforme sur téléphone où le texte occupe toute la largeur, dégradé de gauche à droite sur grand écran où le texte tient à gauche et où le bûcheron doit rester visible à droite. Le cadrage est centré : sur grand écran le rognage est vertical, la position horizontale n'a donc aucun effet ; sur téléphone elle décide de ce qu'on voit, et c'est le bûcheron qu'on garde.
+**Photo du héros (fait).** `src/assets/heros-bucheron.png` (1672 × 941), servie par `next/image` avec `priority` et `placeholder="blur"`.
+
+⚠️ **Le héros n'utilise PAS `object-cover` sur grand écran, et c'est le point central.** `cover` dimensionne sur le plus contraignant des deux axes : sur une photo panoramique posée dans un bandeau large et court, la largeur pilote tant que la fenêtre est très large, puis **la hauteur reprend la main dès qu'elle se resserre**. Mesuré avant correction : facteur d'échelle 1,22 à 2048 px contre 0,88 à 1265 px, soit un bûcheron 40 % plus gros d'une résolution à l'autre.
+
+La règle retenue : **on pilote la largeur seule**, entre deux bornes rapprochées (`w-[clamp(1500px,100vw,1620px)]`), la hauteur suit le ratio naturel, et l'image est ancrée en haut à droite. Conséquence assumée et souhaitable : sur un écran très large, la photo ne touche pas le bord gauche et l'on voit du fond sombre — **mieux vaut du fond que du zoom**. Le voile étant opaque de ce côté, la jonction ne se voit pas.
+
+| Fenêtre | Hauteur du héros | Image rendue | Échelle |
+|---|---|---|---|
+| 1280 × 800 | 805 px | 1500 × 844 | 0,897 |
+| 1366 × 768 | 805 px | 1500 × 844 | 0,897 |
+| 1440 × 900 | 805 px | 1500 × 844 | 0,897 |
+| 1920 × 1080 | 805 px | 1620 × 912 | 0,969 |
+| 2048 × 858 | 805 px | 1620 × 912 | 0,969 |
+
+Écart résiduel : 8 %. Sur téléphone, `cover` reste le bon choix — le bandeau est alors plus haut que large et il n'y a pas de composition à préserver.
+
+Deux voiles de lisibilité, et c'est volontaire : uniforme sur téléphone où le texte occupe toute la largeur, dégradé de gauche à droite sur grand écran où le texte tient à gauche et où le bûcheron doit rester visible à droite.
+
+**En-tête collante — une exception.** La barre est `sticky` partout SAUF dans l'espace client, qui porte sa propre barre de navigation : au premier défilement, l'en-tête passait par-dessus et rendait « Mes commandes », « Mes adresses » et « Se déconnecter » inatteignables. Un décalage fixe (`top-[92px]`) aurait été faux dès que l'en-tête passe sur deux lignes ; on coupe donc la stickiness via la prop `collante`. Toute page qui ajoutera une sous-navigation devra faire de même.
 
 **Bouton or, variante `or`.** L'écart de charte est porté par une variante de bouton dédiée (`src/components/ui/button.tsx`) et non par des classes en ligne, pour qu'il reste réversible en un seul endroit. Elle est **réservée au registre public** — l'administration garde `cta` en braise.
 
 **Piège d'alignement rencontré.** Les trois volets du configurateur démarraient en escalier : une `<legend>` s'ancre sur la bordure de son `<fieldset>` et **ignore son `padding-top`**. Le padding doit donc être porté par un `<div>` englobant, jamais par le `fieldset` lui-même. Les trois titres partagent en outre la même boîte (`flex h-8 items-center`, 19 px, semi-gras).
+
+---
+
+## 9 quater. Administration — refonte du 10 août 2026 (vert sapin et graphiques)
+
+Le client a fourni un visuel de l'administration : **sidebar et fond en vert très sombre**, cartes à grand rayon, tuiles d'indicateurs à courbe, anneau de répartition, jauge circulaire, barres classées. La refonte suit ce visuel. Le §1 disait « l'admin est un troisième registre : sombre, dense » — la teinte change, le principe ne change pas.
+
+### La bascule tient dans une classe
+
+`src/app/admin/layout.tsx` pose `registre-admin` sur le conteneur racine. Cette classe (`globals.css`) **redéfinit trois tokens de surface** :
+
+| Token | Avant (écorce) | Après (sapin) | Rôle |
+|---|---|---|---|
+| `--ecorce` | `#171310` | `#0e1e16` | fond de l'administration |
+| `--ecorce-eleve` | `#241d18` | `#15291f` | cartes |
+| `--ecorce-bord` | `#352c24` | `#2a4a38` | bordures |
+| `--cendre-clair` | `#a79c8e` | `#a3b7ab` | texte secondaire, teinté vert |
+
+**Les dix écrans existants n'ont pas été touchés** : ils n'utilisent que ces tokens, donc ils se repeignent seuls. Retirer la classe suffit à revenir au brun. C'est aussi ce qui garde le thème white-label intact.
+
+⚠️ **`--primary` doit être surchargé, et c'est le piège du jour.** `.dark` le mappe sur `--sapin-clair` (`#2E4C3A`) : posé sur un fond vert sombre, le rapport tombe à **1,0:1** — le bouton principal devenait littéralement invisible. Il est donc redéfini à `#3f7a5b`.
+
+### Contrastes vérifiés (registre admin)
+
+| Combinaison | Ratio | Verdict |
+|---|---|---|
+| `--aubier` sur fond `#0e1e16` | 15,4:1 | ✅ AAA |
+| `--aubier` sur carte `#15291f` | 13,7:1 | ✅ AAA |
+| `--cendre-clair` `#a3b7ab` sur carte | 7,2:1 | ✅ AAA |
+| `--primary` `#3f7a5b` sur fond | 3,4:1 | ✅ élément d'interface |
+| Blanc sur `--primary` | 5,1:1 | ✅ AA |
+| `--graphique-1` (sève) sur carte | 8,4:1 | ✅ AAA |
+| `--graphique-2` `#7fbf9a` sur carte | 7,2:1 | ✅ AAA |
+| `--graphique-3` `#e2703a` sur carte | 4,8:1 | ✅ AA |
+| `--graphique-4` `#6fa8c9` sur carte | 5,9:1 | ✅ AA |
+| `--seve` + `--encre` (onglet actif) | 9,3:1 | ✅ AAA |
+
+### Navigation
+
+Dix liens à plat obligeaient à relire la liste entière. Ils sont **groupés** en Pilotage · Ventes · Livraison · Entreprise, avec l'écran courant en pastille sève. Sur mobile, une seule rangée qui défile, sans titres de groupe. `src/components/admin/navigation-admin.tsx` est le **seul composant client** de la coquille, et uniquement pour lire `usePathname()`.
+
+L'écran actif est celui dont le chemin correspondant est **le plus long** : sinon `/admin` reste allumé partout.
 
 ---
 
@@ -382,3 +443,58 @@ Liste explicite pour éviter la dérive « site moderne générique » :
 - Pas d'effet parallaxe dans le tunnel de commande.
 - Pas de dégradés multicolores, pas de glassmorphism, pas de néon.
 - Pas de texte sur photo sans voile de lisibilité contrôlé.
+
+
+---
+
+## 11. Graphiques de l'administration
+
+### Pourquoi du SVG écrit à la main, sans bibliothèque
+
+Recharts, Chart.js et consorts imposent un composant client et 40 à 120 ko de JavaScript pour tracer cinq polylignes. Trois raisons de s'en passer :
+
+1. L'objectif de performance (§9) ne le supporte pas, et l'administration se consulte depuis une cabine de camion, en 4G.
+2. Leur thème par défaut est étranger à la charte, et `company_themes.tokens` ne les repeindrait pas.
+3. Un SVG rendu côté serveur **s'imprime**. L'exploitant imprime ses tournées ; il imprimera ses courbes.
+
+Tous les composants de `src/components/admin/graphiques/` sont donc des **composants serveur**, sans une ligne de JS envoyée au navigateur. La géométrie pure est dans `src/lib/graphiques.ts`, testée (`tests/unit/graphiques.test.ts`).
+
+| Composant | Quand l'utiliser | Interdit |
+|---|---|---|
+| `Courbe` | Une grandeur dans le temps, une série + la période précédente | Trois séries ou plus : on ne compare plus, on décore |
+| `Sparkline` | Tendance dans une tuile d'indicateur | Seule porteuse d'un chiffre — le nombre est au-dessus, en grand |
+| `Anneau` | Répartition en 5 parts maximum | Une répartition à deux décimales près |
+| `BarresClassees` | Un classement (essences, formats, motifs de perte) | Une série temporelle |
+| `Jauge` | Un taux qui a un sens sur 0-100 % | Un montant, un volume |
+
+### Règles communes
+
+- **La couleur ne porte jamais l'information seule.** Chaque part d'anneau écrit son pourcentage, chaque jauge écrit son verdict (« Très bon », « À surveiller »), chaque barre écrit sa valeur.
+- **Chaque courbe est doublée d'un `<table class="sr-only">`** qui contient la donnée exacte, point par point.
+- **Infobulles = `<title>` SVG natifs.** Zéro JavaScript, et elles fonctionnent au clavier via le survol du lecteur.
+- **Les montants d'axe sont abrégés** (`formatEurosCompact` : « 1,9 k€ »), jamais les montants réels. Un prix, un total ou une facture s'écrit en entier.
+- **Le pas de temps est déduit de la durée affichée** (`choisirGranularite` : jour ≤ 45 j, semaine ≤ 200 j, mois au-delà) et **écrit sous le graphique**. Les seaux vides valent zéro et ne sont jamais omis : une semaine sans vente est une information.
+
+### Quatre pièges payés à l'implémentation
+
+1. **`preserveAspectRatio="none"` déforme tout ce qui est dans le SVG.** Le repère est étiré horizontalement pour occuper la largeur : les `<text>` y sont écrasés et les `<circle>` deviennent des ellipses. La règle retenue : **aucun texte ni cercle dans le SVG**. Les étiquettes d'axe et les marqueurs de fin sont en HTML, positionnés en pourcentage pour l'axe X. La hauteur du `viewBox` est **égale à la hauteur CSS**, ce qui rend l'axe vertical exact au pixel et permet de poser les graduations sur les mêmes ordonnées que les lignes de grille.
+
+2. **`sr-only` ne rétrécit pas un `<table>`.** Une table CSS traite `width: 1px` comme un **minimum** et refuse de descendre en dessous de son contenu. Posée directement sur le tableau de données, la classe le laissait occuper 500 px en position absolue : la page défilait horizontalement — invisible à l'œil, mais bien réel, et interdit par §9. La classe est portée par un `<div>` englobant.
+
+3. **Un lissage de courbe classique dépasse les données.** Une conversion Catmull-Rom → Bézier faisait plonger la courbe de chiffre d'affaires **sous zéro** entre une journée à 0 € et une journée à 900 €. Les points de contrôle sont désormais bornés verticalement au segment. Une courbe d'argent ne doit jamais montrer une valeur que le tableau ne contient pas.
+
+4. **Le plafond d'axe doit être calculé, pas atteint par une boucle.** Graduer « tant que la valeur ≤ maximum » tronquait l'axe sous la donnée : 3 214 € donnait un axe qui s'arrêtait à 3 000 € et la courbe sortait du cadre. Le nombre de crans se déduit du plafond arrondi, jamais l'inverse.
+
+Deux réglages de lisibilité mesurés au navigateur : une étiquette d'axe sur sept au maximum, et **une sur deux seulement sous 640 px** (« 11 juil. » et « 16 juil. » se chevauchaient sur téléphone), en filtrant depuis la fin pour toujours conserver la date la plus récente.
+
+### Voir les écrans avec des données
+
+La base de départ ne contient **aucune commande** : le tableau de bord et les statistiques s'affichaient à zéro, et rien n'y était vérifiable. `supabase/demo/statistiques.sql` génère 14 mois d'historique saisonnier (≈ 970 commandes, devis, sessions et événements de parcours) :
+
+```bash
+npm run db:demo
+```
+
+Il est idempotent, volontairement **hors** du glob `./seeds/*.sql` — il ne part donc jamais vers un environnement hébergé par inadvertance — et ne mouvemente aucun stock : ce sont des commandes d'historique, pas des réservations.
+
+---

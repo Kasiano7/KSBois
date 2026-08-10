@@ -2,11 +2,15 @@ import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import {
+  agregerSerie,
+  choisirGranularite,
   coutReelLivraisonCents,
   evolutionPourcent,
+  moyenneMobile,
   pourcentage,
   predireProchaineCommande,
   projeterStock,
+  type Granularite,
   type PrioriteStock,
 } from "@/domain/statistics";
 
@@ -40,6 +44,65 @@ function formatterDate(date: Date): string {
     year: "numeric",
     timeZone: "UTC",
   }).format(date);
+}
+
+const LIBELLE_GRANULARITE: Record<Granularite, string> = {
+  jour: "par jour",
+  semaine: "par semaine",
+  mois: "par mois",
+};
+
+const formatJourLong = new Intl.DateTimeFormat("fr-FR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: "UTC",
+});
+const formatJourCourt = new Intl.DateTimeFormat("fr-FR", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+const formatMoisLong = new Intl.DateTimeFormat("fr-FR", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const formatMoisCourt = new Intl.DateTimeFormat("fr-FR", { month: "short", timeZone: "UTC" });
+
+function capitaliser(texte: string): string {
+  return texte.replace(/^./, (lettre) => lettre.toUpperCase());
+}
+
+/**
+ * Libellés d'un point de courbe.
+ *
+ * Deux formes distinctes : la longue est lue par les lecteurs d'écran et
+ * s'affiche dans l'infobulle, la courte tient sous l'axe. « Semaine du 3 août »
+ * plutôt que « S32 » : le numéro de semaine ISO ne parle à personne hors
+ * logistique, et l'exploitant raisonne en dates de livraison.
+ */
+function libellesPoint(
+  cleIso: string,
+  granularite: Granularite,
+): { libelle: string; libelleCourt: string } {
+  const date = new Date(cleIso);
+  if (granularite === "mois") {
+    return {
+      libelle: capitaliser(formatMoisLong.format(date)),
+      libelleCourt: formatMoisCourt.format(date).replace(".", ""),
+    };
+  }
+  if (granularite === "semaine") {
+    return {
+      libelle: `Semaine du ${formatJourCourt.format(date)}`,
+      libelleCourt: formatJourCourt.format(date),
+    };
+  }
+  return {
+    libelle: capitaliser(formatJourLong.format(date)),
+    libelleCourt: formatJourCourt.format(date),
+  };
 }
 
 export function resoudrePeriodeStatistiques(entree: {
@@ -218,9 +281,32 @@ export interface ClientAReactiver {
   ecartJours: number;
 }
 
+export interface PointCourbeRapport {
+  cle: string;
+  /** « Lundi 3 août 2026 », « Semaine du 3 août », « Août 2026 ». */
+  libelle: string;
+  /** Étiquette d'axe : « 3 août », « S. 3 août », « août ». */
+  libelleCourt: string;
+  commandes: number;
+  caCents: number;
+  volumeM3: number;
+}
+
+export interface SerieRapport {
+  granularite: Granularite;
+  /** Nom du pas de temps, écrit sous le graphique : « par jour », « par semaine ». */
+  libelleGranularite: string;
+  points: PointCourbeRapport[];
+  /** Tendance lissée du CA, alignée sur `points`. */
+  tendanceCaCents: number[];
+  /** CA de la période précédente, réaligné index par index sur `points`. */
+  caPrecedentCents: number[];
+}
+
 export interface RapportStatistiques {
   periode: PeriodeStatistiques;
   couvertureAnalyticsDepuis: string | null;
+  serie: SerieRapport;
   synthese: {
     caCents: number;
     commandes: number;
@@ -496,6 +582,52 @@ export async function getRapportStatistiques(
   const caBoisCents = lignesPrix.reduce((somme, ligne) => somme + ligne.revenuCents, 0);
   const volumeBoisM3 = lignesPrix.reduce((somme, ligne) => somme + ligne.volumeM3, 0);
 
+  /* ---- Série temporelle : aucune requête de plus, les commandes sont là ---- */
+  const granularite = choisirGranularite(periode.debut, periode.fin);
+  const pointsSerie = agregerSerie(
+    ventes.map((commande) => ({
+      dateIso: commande.created_at,
+      caCents: commande.total_cents,
+      volumeM3: Number(commande.total_volume_m3),
+    })),
+    periode.debut,
+    periode.fin,
+    granularite,
+  );
+  const serieCa = pointsSerie.map((point) => point.caCents);
+  const pointsPrecedents = agregerSerie(
+    ventesPrecedentes.map((commande) => ({
+      dateIso: commande.created_at,
+      caCents: commande.total_cents,
+      volumeM3: Number(commande.total_volume_m3),
+    })),
+    periode.debutPrecedent,
+    periode.finPrecedent,
+    granularite,
+  );
+  // Réalignement par index : la période précédente peut tomber sur un nombre de
+  // seaux différent (mois de longueurs inégales, semaine à cheval). On compare
+  // « le 5ᵉ jour au 5ᵉ jour », pas des dates absolues qui n'ont pas de sens ici.
+  const caPrecedentCents = pointsSerie.map(
+    (_, index) => pointsPrecedents[index]?.caCents ?? 0,
+  );
+  // Fenêtre de lissage : une semaine en pas quotidien, sinon un lissage léger.
+  const fenetreLissage = granularite === "jour" ? 7 : 3;
+
+  const serie: SerieRapport = {
+    granularite,
+    libelleGranularite: LIBELLE_GRANULARITE[granularite],
+    points: pointsSerie.map((point) => ({
+      cle: point.cle,
+      ...libellesPoint(point.cle, granularite),
+      commandes: point.commandes,
+      caCents: point.caCents,
+      volumeM3: point.volumeM3,
+    })),
+    tendanceCaCents: moyenneMobile(serieCa, fenetreLissage).map((valeur) => Math.round(valeur)),
+    caPrecedentCents,
+  };
+
   const libellesOrigine: Record<string, string> = {
     web: "Site web",
     phone: "Téléphone",
@@ -723,6 +855,7 @@ export async function getRapportStatistiques(
   return {
     periode,
     couvertureAnalyticsDepuis: couvertureResultat.data?.started_at ?? null,
+    serie,
     synthese: {
       caCents,
       commandes: ventes.length,

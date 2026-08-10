@@ -2,7 +2,7 @@
 
 > Copie tout ce qui suit la ligne de séparation. Ce fichier est régénérable :
 > il résume l'état du projet tel que décrit dans `PLAN.md` et `docs/`.
-> **Dernière mise à jour : 9 août 2026.**
+> **Dernière mise à jour : 10 août 2026 (après la refonte de l'administration et des statistiques).**
 
 ---
 
@@ -52,7 +52,7 @@ Résolution du tenant par nom de domaine, thème injecté depuis la base.
 **Domaine métier testé** (`src/domain/`) : unités et coefficients d'empilage,
 prix et paliers dégressifs, TVA multi-taux, zones et sélection de véhicule,
 surcharge carburant plafonnée, créneaux à double capacité, moyens de paiement,
-machine à états des commandes, relevé de carburant et statistiques. **207 tests unitaires.**
+machine à états des commandes, relevé de carburant et statistiques. **227 tests unitaires.**
 
 **Parcours client complet.** Configurateur d'accueil en trois volets (longueur à
 l'échelle réelle, essence, panneau « Votre sélection » avec le total en grand),
@@ -88,6 +88,22 @@ en commande en un clic sans ressaisie), **statistiques** (origine des ventes,
 prix réel au m³, tunnel et abandons, demande perdue, autonomie du stock,
 devis, rentabilité des zones, délais et clients à réactiver).
 
+**Administration — refonte du 10 août 2026.** La coquille passe au **vert sapin**
+de la maquette client par la seule classe `registre-admin`, qui redéfinit trois
+tokens de surface : les dix écrans se repeignent sans avoir été touchés
+(`docs/03` §9 quater). Navigation groupée en quatre familles, écran courant en
+pastille sève. L'écran **statistiques** est réorganisé autour de courbes :
+tuiles à micro-courbe, grande courbe du CA avec la période précédente en
+pointillé, courbes commandes et volume, anneau des origines, jauges, barres
+classées. Le pas de temps (jour / semaine / mois) se déduit de la durée
+affichée. **Tous les graphiques sont du SVG rendu côté serveur**, sans
+bibliothèque et sans un octet de JavaScript (`src/components/admin/graphiques/`,
+géométrie testée dans `src/lib/graphiques.ts`).
+
+⚠️ **La base ne contient aucune commande.** Ces écrans s'affichent donc à zéro
+tant que l'on n'a pas lancé `npm run db:demo` (14 mois d'historique saisonnier,
+idempotent, hors du glob de seed — il ne partira jamais en hébergé par erreur).
+
 **Réglages.** `/admin/reglages` est opérationnel : entreprise, identité visuelle (nom, logo,
 sous-titre, couleurs), commandes, rangement à 20 €/m³ modifiable, paiements, facturation,
 notifications, textes légaux et fonctionnalités. Les écritures sont réservées au gérant et auditées.
@@ -104,6 +120,26 @@ l'identique, l'adresse et les contraintes d'accès sont reprises, le client
 atterrit directement sur le choix du créneau. Si un format a disparu, si un prix
 a bougé ou si le stock ne suit plus, l'écran le dit et renvoie au panier.
 
+**Interface publique — refonte du 9 août 2026 sur maquette client.** Le client a
+fourni une maquette de l'accueil ; elle a été suivie pour la mise en page, et les
+écarts sont datés dans `docs/03` §9 ter. Concrètement :
+
+- Les routes publiques vivent dans le **groupe `(site)`** (`page.tsx`, `panier`,
+  `commande`, `devis`, `compte`, `connexion`) dont le layout appose l'en-tête.
+  Le groupe n'ajoute **aucun segment d'URL**.
+- **En-tête sur toutes les pages publiques**, avec la marque qui ramène à
+  l'accueil, la navigation, les icônes compte et panier (pastille de comptage) et
+  le bouton « Commander mon bois ». Deux variantes : posée sur la photo à
+  l'accueil, barre pleine ailleurs.
+- **Photo de héros** (`src/assets/heros-bucheron.png`) servie par `next/image`,
+  avec deux voiles de lisibilité selon la taille d'écran.
+- **Configurateur en une grande carte claire** qui chevauche le bas du héros, en
+  trois volets alignés : longueur · type de bois · « Votre sélection ».
+- **Bouton or** (`variant="or"`) sur les actions principales du parcours public.
+  L'administration garde `cta` en braise.
+- **Un seul idiome de sélection**, en vert sapin : carte pleine sur l'accueil,
+  cadre + fond teinté dans le tunnel. L'orange ne marque plus jamais un choix.
+
 ## 4. Ce qu'il reste à faire, par ordre de valeur
 
 1. **Factures PDF et bons de livraison** — `src/pdf/document-devis.tsx` sert de modèle (mise en page commune, deux adaptateurs). Attention : `invoices` stocke des données structurées, pas seulement un PDF, pour préparer Factur-X.
@@ -112,9 +148,15 @@ a bougé ou si le stock ne suit plus, l'écran le dit et renvoie au panier.
 4. **Pages de contenu et SEO local** — accueil narrative, notre entreprise, savoir-faire, galerie, guides, pages communes, pages légales (CGV, mentions, rétractation, confidentialité).
 5. **ImageKit** — compte à créer, puis composant `<Media />` unique et transformations nommées (`docs/04`).
 
-Les écrans d'administration inexistants affichent aujourd'hui un **chantier
-visible** via `src/components/admin/ecran-a-venir.tsx` plutôt qu'un lien mort.
-Garde ce principe : mieux vaut un périmètre lisible qu'une page d'erreur.
+**Tous les écrans d'administration existent désormais** : plus aucun n'utilise
+`src/components/admin/ecran-a-venir.tsx`, qui est donc du code mort à supprimer
+(ou à garder si tu ouvres un nouveau chantier — le principe reste bon : mieux
+vaut un périmètre lisible qu'une page d'erreur).
+
+**Mise en ligne.** Le dépôt GitHub existe et `main` est poussé, mais rien n'est
+déployé : `.env.local` ne connaît que le Supabase local. Avant Vercel il faut un
+projet Supabase hébergé (migrations + seed), les variables d'environnement, le
+point de terminaison Stripe et un domaine vérifié chez Resend.
 
 ## 5. Dettes techniques ouvertes
 
@@ -154,7 +196,7 @@ toutes les pages tombent en erreur `fetch failed`.
 npm run verify
 ```
 
-Enchaîne typecheck, lint, 207 tests unitaires et le test d'isolation
+Enchaîne typecheck, lint, 227 tests unitaires et le test d'isolation
 multi-tenant. **Il doit rester à zéro.** Comptes de démonstration :
 `patron@demo.local` et `secretariat@demo.local`, mot de passe `demo1234`.
 
@@ -168,6 +210,17 @@ multi-tenant. **Il doit rester à zéro.** Comptes de démonstration :
   vidait les formulaires après une erreur de validation.
 - **Signale les problèmes que tu trouves**, même hors périmètre, plutôt que de
   les contourner. Dis clairement ce qui n'est pas fait ou pas vérifié.
+- **Quatre pièges d'interface déjà payés**, tous documentés dans `docs/03` §9 ter :
+  `object-cover` sur le héros faisait varier la taille du bûcheron de 40 % selon
+  le ratio de fenêtre (on pilote la largeur seule, jamais `cover` sur grand
+  écran) ; une `<legend>` s'ancre sur la bordure de son `<fieldset>` et **ignore
+  son `padding-top`** ; l'en-tête collante recouvrait la barre de l'espace
+  client ; un compteur de clés au niveau du module faisait diverger les `id`
+  entre serveur et client.
+- **Le dépôt n'a aucune configuration Prettier** et Prettier n'est pas une
+  dépendance déclarée. Si tu formates, passe `--print-width 100` : sans ça tout
+  repasse à 80 colonnes et le diff explose. `npm run verify` ne vérifie pas le
+  formatage.
 - **Tiens `docs/07-ROADMAP.md` à jour** à chaque bloc terminé, et consigne dans
   les autres `docs/` toute décision ou tout piège rencontré — c'est ce qui a
   permis de ne pas répéter deux fois les mêmes erreurs.

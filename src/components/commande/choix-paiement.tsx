@@ -126,7 +126,7 @@ export function ChoixPaiement({
                 key={option.method}
                 className={cn(
                   "flex cursor-pointer items-start gap-3 rounded-[6px] border p-4 transition-colors duration-150",
-                  actif ? "border-braise bg-braise/6" : "border-aubier-bord hover:bg-encre/3",
+                  actif ? "border-sapin bg-sapin/8" : "border-aubier-bord hover:bg-encre/3",
                 )}
               >
                 <input

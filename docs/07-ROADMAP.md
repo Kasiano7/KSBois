@@ -60,7 +60,7 @@ npm run verify
 **✅ Fait**
 
 - Fiche produit : règle de coupe (échelle réelle), jauge d'humidité mesurée, sélecteur de quantité, prix en direct avec paliers dégressifs, encart pédagogique m³ apparent / stère
-- Moteurs métier `src/domain/` : prix, paliers, TVA multi-taux, unités, zones, sélection de véhicule, surcharge carburant plafonnée, minimums de zone — **207 tests unitaires** sur l'ensemble du domaine et des services purs
+- Moteurs métier `src/domain/` : prix, paliers, TVA multi-taux, unités, zones, sélection de véhicule, surcharge carburant plafonnée, minimums de zone — **227 tests unitaires** sur l'ensemble du domaine et des services purs
 - Panier serveur (cookie httpOnly, tables sans privilège client), revalidation des prix et du stock à chaque lecture, divergences signalées et jamais corrigées en silence
 - Vérification de zone **dès le panier**, levée d'ambiguïté quand un code postal couvre plusieurs communes, jours de livraison par commune
 - Calcul de livraison bout en bout : zone → véhicule → carburant → arrondi, avec les quatre sorties de secours (hors zone, code postal inconnu, volume hors flotte, frais hors norme)
@@ -92,6 +92,8 @@ npm run verify
   - Correctif de fond au passage : le tunnel n'écrivait **aucune** fiche `customers` et ne renseignait jamais `orders.customer_id`. La policy `orders_customer_read` ne rendait donc aucune ligne — l'espace client aurait été vide pour tout le monde
 
 - **Écran réglages** (`/admin/reglages`) : identité légale et coordonnées, nom/logo/sous-titre et six couleurs, règles de commande, moyens de paiement et acompte, TVA et mentions documentaires, notifications, textes légaux et feature flags. Le rangement est désormais une vraie option serveur à **20 € TTC / m³ apparent** par défaut, modifiable, ventilée à 20 % de TVA et figée sur la commande.
+
+- **Refonte visuelle de l'administration + statistiques lisibles (10 août 2026)** : la coquille passe au **vert sapin** de la maquette client via la seule classe `registre-admin` — les dix écrans se repeignent sans avoir été modifiés (`docs/03` §9 quater). Navigation groupée en quatre familles avec l'écran courant en pastille sève. L'écran statistiques est réorganisé autour de **courbes** : quatre tuiles d'indicateurs à micro-courbe, grande courbe du chiffre d'affaires avec la période précédente en pointillé, courbes commandes et volume, anneau des origines, jauges de conversion et d'automatisation, barres classées pour les prix au m³ et les motifs de blocage. Le pas de temps (jour / semaine / mois) se déduit de la durée affichée, les seaux vides valent zéro. **Tous les graphiques sont du SVG rendu côté serveur, sans bibliothèque et sans un octet de JavaScript** (`src/components/admin/graphiques/`, géométrie pure et testée dans `src/lib/graphiques.ts`). Jeu de démonstration `npm run db:demo` : la base ne contenait aucune commande, ces écrans n'étaient donc pas vérifiables
 
 - **Écran clients** (`/admin/clients` et `/admin/clients/[id]`) : recherche instantanée nom/email/téléphone/commune, filtres fidélité/professionnels/blocage, CA réel, export CSV sûr, fiche avec coordonnées, adresses et contraintes d'accès, commandes, factures, notes, rythme d'achat et prochaine commande estimée. Préparation d'une commande préremplie, blocage motivé appliqué côté serveur, fusion atomique des doublons et anonymisation RGPD auditée.
 

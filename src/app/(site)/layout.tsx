@@ -23,9 +23,17 @@ export default async function LayoutSite({ children }: LayoutProps<"/">) {
   // une en-tête sans nom d'entreprise n'apporterait rien.
   if (!tenant) return <>{children}</>;
 
+  // L'espace client porte sa propre barre de navigation : une en-tête collante
+  // passerait par-dessus au premier défilement.
+  const espaceAvecSaBarre = chemin.startsWith("/compte");
+
   return (
     <>
-      <EnteteSite tenant={tenant} variante={chemin === "/" ? "surimpression" : "pleine"} />
+      <EnteteSite
+        tenant={tenant}
+        variante={chemin === "/" ? "surimpression" : "pleine"}
+        collante={!espaceAvecSaBarre}
+      />
       {children}
     </>
   );

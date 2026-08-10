@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  agregerSerie,
+  choisirGranularite,
   coutReelLivraisonCents,
+  debutDeSeau,
   evolutionPourcent,
   mediane,
+  moyenneMobile,
   moyennePonderee,
   pourcentage,
   predireProchaineCommande,
@@ -53,5 +57,89 @@ describe("statistiques", () => {
     ]);
     expect(prediction?.intervalleJours).toBe(365);
     expect(prediction?.datePrevue.slice(0, 10)).toBe("2026-12-31");
+  });
+});
+
+describe("séries temporelles", () => {
+  const d = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+
+  it("choisit le pas de temps d'après la durée affichée", () => {
+    expect(choisirGranularite(d("2026-01-01"), d("2026-01-31"))).toBe("jour");
+    expect(choisirGranularite(d("2026-01-01"), d("2026-04-01"))).toBe("semaine");
+    expect(choisirGranularite(d("2025-01-01"), d("2026-01-01"))).toBe("mois");
+  });
+
+  it("cale les seaux sur minuit, sur le lundi et sur le 1er du mois", () => {
+    // 8 août 2026 est un samedi : la semaine ISO commence le lundi 3.
+    expect(debutDeSeau(new Date("2026-08-08T22:30:00.000Z"), "jour").toISOString()).toBe(
+      "2026-08-08T00:00:00.000Z",
+    );
+    expect(debutDeSeau(new Date("2026-08-08T22:30:00.000Z"), "semaine").toISOString()).toBe(
+      "2026-08-03T00:00:00.000Z",
+    );
+    expect(debutDeSeau(new Date("2026-08-08T22:30:00.000Z"), "mois").toISOString()).toBe(
+      "2026-08-01T00:00:00.000Z",
+    );
+  });
+
+  it("remplit les trous à zéro plutôt que de sauter les jours sans vente", () => {
+    const serie = agregerSerie(
+      [
+        { dateIso: "2026-08-01T09:00:00.000Z", caCents: 12_000, volumeM3: 2 },
+        { dateIso: "2026-08-01T18:00:00.000Z", caCents: 8_000, volumeM3: 1 },
+        { dateIso: "2026-08-03T10:00:00.000Z", caCents: 5_000, volumeM3: 0.5 },
+      ],
+      d("2026-08-01"),
+      d("2026-08-04"),
+      "jour",
+    );
+
+    expect(serie).toHaveLength(3);
+    expect(serie[0]).toEqual({
+      cle: "2026-08-01T00:00:00.000Z",
+      commandes: 2,
+      caCents: 20_000,
+      volumeM3: 3,
+    });
+    expect(serie[1]).toEqual({
+      cle: "2026-08-02T00:00:00.000Z",
+      commandes: 0,
+      caCents: 0,
+      volumeM3: 0,
+    });
+    expect(serie[2].caCents).toBe(5_000);
+  });
+
+  it("ignore une commande hors bornes et une date invalide", () => {
+    const serie = agregerSerie(
+      [
+        { dateIso: "2026-07-31T23:00:00.000Z", caCents: 99_000, volumeM3: 9 },
+        { dateIso: "pas une date", caCents: 99_000, volumeM3: 9 },
+      ],
+      d("2026-08-01"),
+      d("2026-08-03"),
+      "jour",
+    );
+    expect(serie.map((point) => point.caCents)).toEqual([0, 0]);
+  });
+
+  it("agrège par mois sur une période de douze mois", () => {
+    const serie = agregerSerie(
+      [
+        { dateIso: "2026-01-15T00:00:00.000Z", caCents: 1_000, volumeM3: 1 },
+        { dateIso: "2026-01-28T00:00:00.000Z", caCents: 2_000, volumeM3: 1 },
+        { dateIso: "2026-03-02T00:00:00.000Z", caCents: 4_000, volumeM3: 1 },
+      ],
+      d("2026-01-01"),
+      d("2026-04-01"),
+      "mois",
+    );
+    expect(serie.map((point) => point.caCents)).toEqual([3_000, 0, 4_000]);
+  });
+
+  it("centre la moyenne mobile et rétrécit la fenêtre sur les bords", () => {
+    expect(moyenneMobile([0, 3, 0, 3, 0], 3)).toEqual([1.5, 1, 2, 1, 1.5]);
+    // Une fenêtre de 1 laisse la série intacte.
+    expect(moyenneMobile([4, 8], 1)).toEqual([4, 8]);
   });
 });

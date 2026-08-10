@@ -64,7 +64,7 @@ export function ChoixCreneau({
                         "flex cursor-pointer items-center justify-between gap-3 rounded-[6px] border p-4",
                         "transition-colors duration-150",
                         actif
-                          ? "border-braise bg-braise/6"
+                          ? "border-sapin bg-sapin/8"
                           : "border-aubier-bord hover:bg-encre/3",
                       )}
                     >

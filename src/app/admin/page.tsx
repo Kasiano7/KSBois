@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
+import { AlertTriangle, ArrowRight, ChartNoAxesCombined } from "lucide-react";
 import { requireRole } from "@/lib/auth";
 import { getChiffresDuJour, getPointsDAttention, getResumeMois } from "@/server/admin";
 import { formatEuros, formatVolume } from "@/domain/units";
+import { evolutionPourcent } from "@/domain/statistics";
 import { Button } from "@/components/ui/button";
+import { Carte, PuceEvolution } from "@/components/admin/carte";
 
 export const metadata: Metadata = {
   title: "Tableau de bord",
@@ -49,28 +51,34 @@ export default async function TableauDeBord() {
 
   const [y, m, d] = jour.date.split("-").map(Number);
   const dateLisible = formatDateLongue.format(new Date(Date.UTC(y, m - 1, d)));
-
-  const evolution =
-    mois.caMoisPrecedentCents > 0
-      ? Math.round(((mois.caCents - mois.caMoisPrecedentCents) / mois.caMoisPrecedentCents) * 100)
-      : null;
+  const evolution = evolutionPourcent(mois.caCents, mois.caMoisPrecedentCents);
 
   return (
-    <main className="p-5 sm:p-8">
+    <main className="mx-auto w-full max-w-[1560px] p-5 sm:p-8">
       {/* ---- Bloc 1 : AUJOURD'HUI, le plus grand, en haut ---- */}
-      <section className="border-ecorce-bord bg-ecorce-eleve rounded-[8px] border p-6 sm:p-8">
+      <Carte className="p-6 sm:p-8">
         <p className="micro-label text-seve first-letter:uppercase">{dateLisible}</p>
 
         <div className="mt-6 grid grid-cols-2 gap-6 lg:grid-cols-4">
-          <Chiffre valeur={String(jour.livraisons)} libelle={jour.livraisons > 1 ? "livraisons prévues" : "livraison prévue"} />
+          <Chiffre
+            valeur={String(jour.livraisons)}
+            libelle={jour.livraisons > 1 ? "livraisons prévues" : "livraison prévue"}
+          />
           {/* Le libellé porte déjà l'unité : on n'affiche que le nombre. */}
           <Chiffre valeur={jour.volumeM3.toLocaleString("fr-FR")} libelle="m³ apparents à charger" />
           <Chiffre
             valeur={formatEuros(jour.aEncaisserCents)}
             libelle="à encaisser"
-            precision={jour.enEspecesCents > 0 ? `dont ${formatEuros(jour.enEspecesCents)} en espèces` : undefined}
+            precision={
+              jour.enEspecesCents > 0
+                ? `dont ${formatEuros(jour.enEspecesCents)} en espèces`
+                : undefined
+            }
           />
-          <Chiffre valeur={String(jour.nouvellesCommandes)} libelle="nouvelles commandes depuis hier" />
+          <Chiffre
+            valeur={String(jour.nouvellesCommandes)}
+            libelle="nouvelles commandes depuis hier"
+          />
         </div>
 
         <Button asChild variant="cta" size="cta" className="mt-7">
@@ -79,23 +87,21 @@ export default async function TableauDeBord() {
             <ArrowRight strokeWidth={1.75} />
           </Link>
         </Button>
-      </section>
+      </Carte>
 
       {/* ---- Bloc 2 : ce qui demande une action ---- */}
       <section className="mt-8">
         <h2 className="text-[22px]">À traiter</h2>
 
         {points.length === 0 ? (
-          <p className="text-cendre-clair mt-3 text-[17px]">
-            Rien à traiter dans l&apos;immédiat.
-          </p>
+          <p className="text-cendre-clair mt-3 text-[17px]">Rien à traiter dans l&apos;immédiat.</p>
         ) : (
           <ul className="mt-4 space-y-2">
             {points.map((point) => (
               <li key={point.cle}>
                 <Link
                   href={point.href}
-                  className="border-ecorce-bord hover:bg-ecorce-eleve flex min-h-14 items-center gap-3 rounded-[6px] border px-4 py-3 transition-colors"
+                  className="border-ecorce-bord hover:bg-ecorce-eleve flex min-h-14 items-center gap-3 rounded-[12px] border px-4 py-3 transition-colors"
                 >
                   <AlertTriangle
                     size={20}
@@ -104,7 +110,12 @@ export default async function TableauDeBord() {
                     aria-hidden="true"
                   />
                   <span className="flex-1 text-[17px]">{point.libelle}</span>
-                  <ArrowRight size={18} strokeWidth={1.75} className="text-cendre-clair shrink-0" aria-hidden="true" />
+                  <ArrowRight
+                    size={18}
+                    strokeWidth={1.75}
+                    className="text-cendre-clair shrink-0"
+                    aria-hidden="true"
+                  />
                 </Link>
               </li>
             ))}
@@ -114,35 +125,38 @@ export default async function TableauDeBord() {
 
       {/* ---- Bloc 3 : activité du mois ---- */}
       <section className="mt-10">
-        <h2 className="text-[22px]">Ce mois-ci</h2>
-        <div className="border-ecorce-bord mt-4 grid gap-6 rounded-[8px] border p-6 sm:grid-cols-3">
-          <div>
-            <p className="text-cendre-clair text-[15px]">Chiffre d&apos;affaires</p>
-            <p className="tabulaire mt-1 text-[28px] font-bold">{formatEuros(mois.caCents)}</p>
-            {evolution !== null && (
-              <p
-                className={`mt-1 flex items-center gap-1.5 text-[15px] ${
-                  evolution >= 0 ? "text-succes" : "text-alerte"
-                }`}
-              >
-                {evolution >= 0 ? (
-                  <TrendingUp size={17} strokeWidth={1.9} aria-hidden="true" />
-                ) : (
-                  <TrendingDown size={17} strokeWidth={1.9} aria-hidden="true" />
-                )}
-                {evolution >= 0 ? "+" : ""}
-                {evolution} % vs mois dernier
-              </p>
-            )}
-          </div>
-          <div>
-            <p className="text-cendre-clair text-[15px]">Commandes</p>
-            <p className="tabulaire mt-1 text-[28px] font-bold">{mois.commandes}</p>
-          </div>
-          <div>
-            <p className="text-cendre-clair text-[15px]">Volume vendu</p>
-            <p className="tabulaire mt-1 text-[28px] font-bold">{formatVolume(mois.volumeM3)}</p>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-[22px]">Ce mois-ci</h2>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/statistiques">
+              <ChartNoAxesCombined size={17} strokeWidth={1.9} aria-hidden="true" />
+              Voir toutes les statistiques
+            </Link>
+          </Button>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Carte>
+            <p className="text-cendre-clair text-[14px]">Chiffre d&apos;affaires</p>
+            <p className="font-display tabulaire mt-2 text-[28px] leading-none font-bold">
+              {formatEuros(mois.caCents)}
+            </p>
+            <div className="mt-3">
+              <PuceEvolution valeur={evolution} suffixe="vs mois dernier" />
+            </div>
+          </Carte>
+          <Carte>
+            <p className="text-cendre-clair text-[14px]">Commandes</p>
+            <p className="font-display tabulaire mt-2 text-[28px] leading-none font-bold">
+              {mois.commandes}
+            </p>
+          </Carte>
+          <Carte>
+            <p className="text-cendre-clair text-[14px]">Volume vendu</p>
+            <p className="font-display tabulaire mt-2 text-[28px] leading-none font-bold">
+              {formatVolume(mois.volumeM3)}
+            </p>
+          </Carte>
         </div>
       </section>
     </main>

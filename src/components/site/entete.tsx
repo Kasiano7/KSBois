@@ -42,9 +42,20 @@ const LIENS = [
 export async function EnteteSite({
   tenant,
   variante = "pleine",
+  collante = true,
 }: {
   tenant: Tenant;
   variante?: "surimpression" | "pleine";
+  /**
+   * Barre collante en haut de fenêtre.
+   *
+   * ⚠️ À couper sur les écrans qui portent leur PROPRE barre de navigation,
+   * l'espace client en tête : l'en-tête collante passait au-dessus au premier
+   * défilement et rendait « Mes commandes », « Mes adresses » et « Se
+   * déconnecter » inatteignables. Un décalage fixe (`top-[92px]`) aurait été
+   * faux dès que l'en-tête passe sur deux lignes.
+   */
+  collante?: boolean;
 }) {
   const articles = await nombreArticlesPanier();
   const surimpression = variante === "surimpression";
@@ -55,7 +66,7 @@ export async function EnteteSite({
         "z-30",
         surimpression
           ? "absolute inset-x-0 top-0"
-          : "bg-ecorce border-ecorce-bord sticky top-0 border-b",
+          : cn("bg-ecorce border-ecorce-bord border-b", collante && "sticky top-0"),
       )}
     >
       <div className="mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 sm:py-5">

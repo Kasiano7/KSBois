@@ -67,6 +67,16 @@
   --border: var(--aubier-bord);
   --input: var(--aubier-bord);
   --ring: var(--braise);
+  /* Séries de graphiques — valeurs du registre CLAIR. Le registre admin les
+     surcharge en §9 quater pour rester lisible sur vert sombre. */
+  --graphique-1: var(--braise);
+  --graphique-2: var(--sapin);
+  --graphique-3: var(--alerte);
+  --graphique-4: var(--info);
+  --graphique-5: var(--cendre);
+  --graphique-positif: var(--succes);
+  --graphique-negatif: var(--erreur);
+
   /* Palette de graphiques admin — jamais la couleur seule (docs/03 §9) */
   --chart-1: var(--sapin);
   --chart-2: var(--braise);
@@ -112,8 +122,48 @@
   --ring: var(--braise);
 }
 
+/* ==========================================================================
+   Registre ADMIN — vert sapin profond (docs/03 §9 quater, 10 août 2026)
+
+   La maquette client place l'administration sur un VERT très sombre, pas sur
+   le brun écorce. Plutôt que de réécrire les dix écrans, on redéfinit ici les
+   trois tokens de surface : tout ce qui utilise `bg-ecorce-eleve`,
+   `border-ecorce-bord` ou `text-cendre-clair` se repeint sans être touché.
+
+   ⚠️ `--primary` DOIT être surchargé : `.dark` le mappe sur `--sapin-clair`,
+   qui sur un fond vert tombe à 1,0:1 — le bouton principal devenait invisible.
+   Contrastes vérifiés en §9 quater ; ne pas modifier ces hex sans les refaire.
+   ========================================================================== */
+
+.registre-admin {
+  --ecorce: #0e1e16; /* fond de l'administration */
+  --ecorce-eleve: #15291f; /* cartes et surfaces surélevées */
+  --ecorce-bord: #2a4a38; /* bordures sur vert */
+  --cendre-clair: #a3b7ab; /* texte secondaire, teinté vert — 8,2:1 sur le fond */
+
+  --primary: #3f7a5b; /* 3,4:1 sur le fond, blanc à 5,1:1 dessus */
+  --primary-foreground: #ffffff;
+
+  /* Palette des courbes et graphiques — chacune ≥ 4,5:1 sur la carte.
+     Jamais la couleur seule : chaque série porte aussi son libellé. */
+  --graphique-1: var(--seve); /* série principale — chiffre d'affaires */
+  --graphique-2: #7fbf9a; /* série secondaire — volume, commandes */
+  --graphique-3: #e2703a; /* alerte, perte, refus */
+  --graphique-4: #6fa8c9; /* comparaison, période précédente */
+  --graphique-5: var(--cendre-clair); /* reste, « autres » */
+  --graphique-positif: #7fbf9a;
+  --graphique-negatif: #e2703a;
+}
+
 @theme inline {
   /* Palette métier, utilisable en `bg-sapin`, `text-braise-texte`, etc. */
+  --color-graphique-1: var(--graphique-1);
+  --color-graphique-2: var(--graphique-2);
+  --color-graphique-3: var(--graphique-3);
+  --color-graphique-4: var(--graphique-4);
+  --color-graphique-5: var(--graphique-5);
+  --color-graphique-positif: var(--graphique-positif);
+  --color-graphique-negatif: var(--graphique-negatif);
   --color-ecorce: var(--ecorce);
   --color-ecorce-eleve: var(--ecorce-eleve);
   --color-ecorce-bord: var(--ecorce-bord);
